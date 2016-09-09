@@ -20,8 +20,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.drools.persistence.info.SessionInfo;
-import org.drools.persistence.info.WorkItemInfo;
+import org.drools.persistence.PersistentSession;
+import org.drools.persistence.PersistentWorkItem;
 import org.drools.persistence.map.EnvironmentBuilder;
 import org.jbpm.persistence.ProcessStorage;
 import org.jbpm.persistence.ProcessStorageEnvironmentBuilder;
@@ -85,17 +85,17 @@ public class MapBasedPersistenceTest extends MapPersistenceTest {
     private static class SimpleProcessStorage
         implements
         ProcessStorage {
-        private Map<Long, SessionInfo>      ksessions = new HashMap<Long, SessionInfo>();
+        private Map<Long, PersistentSession>      ksessions = new HashMap<Long, PersistentSession>();
         private Map<Long, ProcessInstanceInfo> processes = new HashMap<Long, ProcessInstanceInfo>();
-        private Map<Long, WorkItemInfo>        workItems = new HashMap<Long, WorkItemInfo>();
+        private Map<Long, PersistentWorkItem>        workItems = new HashMap<Long, PersistentWorkItem>();
 
-        public void saveOrUpdate(SessionInfo ksessionInfo) {
+        public void saveOrUpdate(PersistentSession ksessionInfo) {
             ksessionInfo.transform();
             ksessions.put( ksessionInfo.getId(),
                            ksessionInfo );
         }
 
-        public SessionInfo findSessionInfo(Long id) {
+        public PersistentSession findSessionInfo(Long id) {
             return ksessions.get( id );
         }
 
@@ -130,21 +130,21 @@ public class MapBasedPersistenceTest extends MapPersistenceTest {
             return processInstancesWaitingForEvent;
         }
 
-        public void saveOrUpdate(WorkItemInfo workItemInfo) {
-            workItems.put( workItemInfo.getId(),
-                           workItemInfo );
+        public void saveOrUpdate(PersistentWorkItem workItem) {
+            workItems.put( workItem.getId(),
+                           workItem );
         }
 
         public Long getNextWorkItemId() {
             return new Long( workItems.size() + 1 );
         }
 
-        public WorkItemInfo findWorkItemInfo(Long id) {
+        public PersistentWorkItem findWorkItemInfo(Long id) {
             return workItems.get( id );
         }
 
-        public void remove(WorkItemInfo workItemInfo) {
-            workItems.remove( workItemInfo.getId() );
+        public void remove(PersistentWorkItem workItem) {
+            workItems.remove( workItem.getId() );
         }
 
         public Long getNextStatefulKnowledgeSessionId() {
@@ -152,12 +152,12 @@ public class MapBasedPersistenceTest extends MapPersistenceTest {
         }
 
         @Override
-        public void lock(SessionInfo sessionInfo) {
+        public void lock(PersistentSession session) {
             throw new UnsupportedOperationException("Map based persistence does not support locking.");
         }
 
         @Override
-        public void lock(WorkItemInfo workItemInfo) {
+        public void lock(PersistentWorkItem workItem) {
             throw new UnsupportedOperationException("Map based persistence does not support locking.");
         }
     }
