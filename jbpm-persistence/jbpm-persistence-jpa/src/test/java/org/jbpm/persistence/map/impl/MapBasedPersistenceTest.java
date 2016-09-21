@@ -23,6 +23,7 @@ import java.util.Map;
 import org.drools.persistence.PersistentSession;
 import org.drools.persistence.PersistentWorkItem;
 import org.drools.persistence.map.EnvironmentBuilder;
+import org.jbpm.persistence.PersistentProcessInstance;
 import org.jbpm.persistence.ProcessStorage;
 import org.jbpm.persistence.ProcessStorageEnvironmentBuilder;
 import org.jbpm.persistence.processinstance.ProcessInstanceInfo;
@@ -86,7 +87,7 @@ public class MapBasedPersistenceTest extends MapPersistenceTest {
         implements
         ProcessStorage {
         private Map<Long, PersistentSession>      ksessions = new HashMap<Long, PersistentSession>();
-        private Map<Long, ProcessInstanceInfo> processes = new HashMap<Long, ProcessInstanceInfo>();
+        private Map<Long, PersistentProcessInstance> processes = new HashMap<Long, PersistentProcessInstance>();
         private Map<Long, PersistentWorkItem>        workItems = new HashMap<Long, PersistentWorkItem>();
 
         public void saveOrUpdate(PersistentSession ksessionInfo) {
@@ -99,16 +100,16 @@ public class MapBasedPersistenceTest extends MapPersistenceTest {
             return ksessions.get( id );
         }
 
-        public ProcessInstanceInfo findProcessInstanceInfo(Long processInstanceId) {
-            ProcessInstanceInfo processInstanceInfo = processes.get( processInstanceId );
+        public PersistentProcessInstance findProcessInstanceInfo(Long processInstanceId) {
+        	PersistentProcessInstance processInstanceInfo = processes.get( processInstanceId );
             if(processInstanceInfo != null) {
                 //FIXME need a way to clone a processInstance before saving
-                processInstanceInfo.clearProcessInstance();
+                ((ProcessInstanceInfo)processInstanceInfo).clearProcessInstance();
             }
             return processInstanceInfo;
         }
 
-        public void saveOrUpdate(ProcessInstanceInfo processInstanceInfo) {
+        public void saveOrUpdate(PersistentProcessInstance processInstanceInfo) {
             processInstanceInfo.transform();
             processes.put( processInstanceInfo.getId(),
                            processInstanceInfo );
@@ -124,8 +125,9 @@ public class MapBasedPersistenceTest extends MapPersistenceTest {
 
         public List<Long> getProcessInstancesWaitingForEvent(String type) {
             List<Long> processInstancesWaitingForEvent = new ArrayList<Long>();
-            for ( ProcessInstanceInfo processInstanceInfo : processes.values() ) {
-                if ( processInstanceInfo.getEventTypes().contains( type ) ) processInstancesWaitingForEvent.add( processInstanceInfo.getId() );
+            for ( PersistentProcessInstance processInstanceInfo : processes.values() ) {
+                if ( ((ProcessInstanceInfo) processInstanceInfo).getEventTypes().contains( type ) ) 
+                	processInstancesWaitingForEvent.add( processInstanceInfo.getId() );
             }
             return processInstancesWaitingForEvent;
         }

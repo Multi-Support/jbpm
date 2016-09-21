@@ -16,7 +16,6 @@
 package org.jbpm.persistence;
 
 import org.drools.persistence.map.ManualTransactionManager;
-import org.jbpm.persistence.processinstance.ProcessInstanceInfo;
 
 public class ManualProcessTransactionManager extends ManualTransactionManager {
 
@@ -33,7 +32,7 @@ public class ManualProcessTransactionManager extends ManualTransactionManager {
     
     @Override
     public void commit(boolean transactionOwner) {
-        for ( ProcessInstanceInfo processInstanceInfo : session.getStoredProcessInstances() ) {
+        for ( PersistentProcessInstance processInstanceInfo : session.getStoredProcessInstances() ) {
             storage.saveOrUpdate( processInstanceInfo );
         }
         session.clearStoredProcessInstances();

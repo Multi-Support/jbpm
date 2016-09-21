@@ -29,13 +29,14 @@ import javax.persistence.OneToMany;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Version;
 
+import org.jbpm.persistence.PersistentCorrelationKey;
 import org.kie.internal.jaxb.CorrelationKeyXmlAdapter;
 import org.kie.internal.process.CorrelationKey;
 import org.kie.internal.process.CorrelationProperty;
 
 @Entity
 @SequenceGenerator(name="correlationKeyInfoIdSeq", sequenceName="CORRELATION_KEY_ID_SEQ")
-public class CorrelationKeyInfo implements CorrelationKey, Serializable {
+public class CorrelationKeyInfo implements CorrelationKey, PersistentCorrelationKey, Serializable {
 
 	private static final long serialVersionUID = 4469298702447675428L;
 

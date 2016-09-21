@@ -22,8 +22,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.drools.persistence.map.MapBasedPersistenceContext;
-import org.jbpm.persistence.correlation.CorrelationKeyInfo;
-import org.jbpm.persistence.processinstance.ProcessInstanceInfo;
 import org.kie.internal.process.CorrelationKey;
 
 public class MapBasedProcessPersistenceContext extends MapBasedPersistenceContext
@@ -32,17 +30,17 @@ public class MapBasedProcessPersistenceContext extends MapBasedPersistenceContex
     NonTransactionalProcessPersistentSession{
     
     private ProcessStorage storage;
-    private Map<Long, ProcessInstanceInfo> processes;
-    private Map<CorrelationKeyInfo, ProcessInstanceInfo> processInstancesByBusinessKey;
+    private Map<Long, PersistentProcessInstance> processes;
+    private Map<PersistentCorrelationKey, PersistentProcessInstance> processInstancesByBusinessKey;
 
     public MapBasedProcessPersistenceContext(ProcessStorage storage) {
         super( storage );
         this.storage = storage;
-        this.processes = new HashMap<Long, ProcessInstanceInfo>();
-        this.processInstancesByBusinessKey = new HashMap<CorrelationKeyInfo, ProcessInstanceInfo>();
+        this.processes = new HashMap<Long, PersistentProcessInstance>();
+        this.processInstancesByBusinessKey = new HashMap<PersistentCorrelationKey, PersistentProcessInstance>();
     }
 
-    public ProcessInstanceInfo persist(ProcessInstanceInfo processInstanceInfo) {
+    public PersistentProcessInstance persist(PersistentProcessInstance processInstanceInfo) {
         if( processInstanceInfo.getId() == null ) {
             processInstanceInfo.setId( storage.getNextProcessInstanceId() );
         }
@@ -50,16 +48,16 @@ public class MapBasedProcessPersistenceContext extends MapBasedPersistenceContex
         return processInstanceInfo;
     }
 
-    public ProcessInstanceInfo findProcessInstanceInfo(Long processId) {
-        ProcessInstanceInfo processInstanceInfo = processes.get( processId );
+    public PersistentProcessInstance findProcessInstanceInfo(Long processId) {
+    	PersistentProcessInstance processInstanceInfo = processes.get( processId );
         if( processInstanceInfo == null){
             processInstanceInfo = storage.findProcessInstanceInfo( processId );
         }
         return processInstanceInfo;
     }
 
-    public List<ProcessInstanceInfo> getStoredProcessInstances() {
-        return Collections.unmodifiableList( new ArrayList<ProcessInstanceInfo>(processes.values()));
+    public List<PersistentProcessInstance> getStoredProcessInstances() {
+        return Collections.unmodifiableList( new ArrayList<PersistentProcessInstance>(processes.values()));
     }
 
     @Override
@@ -68,7 +66,7 @@ public class MapBasedProcessPersistenceContext extends MapBasedPersistenceContex
         clearStoredProcessInstances();
     }
 
-    public void remove(ProcessInstanceInfo processInstanceInfo) {
+    public void remove(PersistentProcessInstance processInstanceInfo) {
         storage.removeProcessInstanceInfo( processInstanceInfo.getId() );
         
     }
@@ -82,8 +80,8 @@ public class MapBasedProcessPersistenceContext extends MapBasedPersistenceContex
     }
 
     @Override
-    public CorrelationKeyInfo persist(CorrelationKeyInfo correlationKeyInfo) {
-        ProcessInstanceInfo piInfo = this.processes.get(correlationKeyInfo.getProcessInstanceId());
+    public PersistentCorrelationKey persist(PersistentCorrelationKey correlationKeyInfo) {
+        PersistentProcessInstance piInfo = this.processes.get(correlationKeyInfo.getProcessInstanceId());
         if (piInfo != null) {
             this.processInstancesByBusinessKey.put(correlationKeyInfo, piInfo);
         }
@@ -92,7 +90,7 @@ public class MapBasedProcessPersistenceContext extends MapBasedPersistenceContex
 
     @Override
     public Long getProcessInstanceByCorrelationKey(CorrelationKey correlationKey) {
-        ProcessInstanceInfo piInfo = this.processInstancesByBusinessKey.get(correlationKey);
+    	PersistentProcessInstance piInfo = this.processInstancesByBusinessKey.get(correlationKey);
         return piInfo.getId();
     }
 }

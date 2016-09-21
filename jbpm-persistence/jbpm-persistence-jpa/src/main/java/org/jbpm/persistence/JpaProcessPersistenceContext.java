@@ -48,7 +48,7 @@ public class JpaProcessPersistenceContext extends JpaPersistenceContext
         super( em, useJTA, locking, txm);
     }
 
-    public ProcessInstanceInfo persist(ProcessInstanceInfo processInstanceInfo) {
+    public PersistentProcessInstance persist(PersistentProcessInstance processInstanceInfo) {
         EntityManager em = getEntityManager();
         em.persist(processInstanceInfo);
         TransactionManagerHelper.addToUpdatableSet(txm, processInstanceInfo);
@@ -59,7 +59,7 @@ public class JpaProcessPersistenceContext extends JpaPersistenceContext
         return processInstanceInfo;
     }
 
-    public ProcessInstanceInfo findProcessInstanceInfo(Long processId) {
+    public PersistentProcessInstance findProcessInstanceInfo(Long processId) {
     	EntityManager em = getEntityManager();       
     	if( this.pessimisticLocking ) { 
             return em.find( ProcessInstanceInfo.class, processId, LockModeType.PESSIMISTIC_FORCE_INCREMENT );
@@ -67,7 +67,7 @@ public class JpaProcessPersistenceContext extends JpaPersistenceContext
         return em.find( ProcessInstanceInfo.class, processId );
     }
 
-    public void remove(ProcessInstanceInfo processInstanceInfo) {
+    public void remove(PersistentProcessInstance processInstanceInfo) {
         getEntityManager().remove( processInstanceInfo );
         TransactionManagerHelper.removeFromUpdatableSet(txm, processInstanceInfo);
         List<CorrelationKeyInfo> correlations = getEntityManager().createNamedQuery("GetCorrelationKeysByProcessInstanceId")
@@ -111,7 +111,7 @@ public class JpaProcessPersistenceContext extends JpaPersistenceContext
     	}
     }
 
-    public CorrelationKeyInfo persist(CorrelationKeyInfo correlationKeyInfo) {
+    public PersistentCorrelationKey persist(PersistentCorrelationKey correlationKeyInfo) {
         Long processInstanceId = getProcessInstanceByCorrelationKey(correlationKeyInfo);
         if (processInstanceId != null) {
             throw new RuntimeException(correlationKeyInfo + " already exists");

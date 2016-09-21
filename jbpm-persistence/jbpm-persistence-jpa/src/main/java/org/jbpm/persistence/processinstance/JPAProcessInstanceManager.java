@@ -75,7 +75,7 @@ public class JPAProcessInstanceManager
                     .get( EnvironmentName.PERSISTENCE_CONTEXT_MANAGER ))
                     .getProcessPersistenceContext();
 
-        processInstanceInfo = context.persist( processInstanceInfo );
+        processInstanceInfo = (ProcessInstanceInfo) context.persist( processInstanceInfo );
         ((org.jbpm.process.instance.ProcessInstance) processInstance).setId( processInstanceInfo.getId() );
         processInstanceInfo.updateLastReadDate();
         // persist correlation if exists
@@ -115,7 +115,7 @@ public class JPAProcessInstanceManager
         	    = (ProcessPersistenceContextManager) this.kruntime.getEnvironment().get( EnvironmentName.PERSISTENCE_CONTEXT_MANAGER );
             	ppcm.beginCommandScopedEntityManager();
             	ProcessPersistenceContext context = ppcm.getProcessPersistenceContext();
-                ProcessInstanceInfo processInstanceInfo = context.findProcessInstanceInfo( id );
+                ProcessInstanceInfo processInstanceInfo = (ProcessInstanceInfo) context.findProcessInstanceInfo( id );
                 if ( processInstanceInfo == null ) {
                     return null;
                 }                
@@ -132,7 +132,7 @@ public class JPAProcessInstanceManager
     	ppcm.beginCommandScopedEntityManager();
     	
         ProcessPersistenceContext context = ppcm.getProcessPersistenceContext();
-        ProcessInstanceInfo processInstanceInfo = context.findProcessInstanceInfo( id );
+        ProcessInstanceInfo processInstanceInfo = (ProcessInstanceInfo) context.findProcessInstanceInfo( id );
         if ( processInstanceInfo == null ) {
             return null;
         }
@@ -166,7 +166,7 @@ public class JPAProcessInstanceManager
 
     public void removeProcessInstance(ProcessInstance processInstance) {
         ProcessPersistenceContext context = ((ProcessPersistenceContextManager) this.kruntime.getEnvironment().get( EnvironmentName.PERSISTENCE_CONTEXT_MANAGER )).getProcessPersistenceContext();
-        ProcessInstanceInfo processInstanceInfo = context.findProcessInstanceInfo( processInstance.getId() );
+        ProcessInstanceInfo processInstanceInfo = (ProcessInstanceInfo) context.findProcessInstanceInfo( processInstance.getId() );
         
         if ( processInstanceInfo != null ) {
             context.remove( processInstanceInfo );

@@ -51,6 +51,7 @@ import org.jbpm.marshalling.impl.JBPMMessages;
 import org.jbpm.marshalling.impl.ProcessInstanceMarshaller;
 import org.jbpm.marshalling.impl.ProcessMarshallerRegistry;
 import org.jbpm.marshalling.impl.ProtobufRuleFlowProcessInstanceMarshaller;
+import org.jbpm.persistence.PersistentProcessInstance;
 import org.jbpm.process.instance.impl.ProcessInstanceImpl;
 import org.jbpm.workflow.instance.impl.WorkflowProcessInstanceImpl;
 import org.kie.api.runtime.Environment;
@@ -58,7 +59,7 @@ import org.kie.api.runtime.process.ProcessInstance;
 
 @Entity
 @SequenceGenerator(name="processInstanceInfoIdSeq", sequenceName="PROCESS_INSTANCE_INFO_ID_SEQ")
-public class ProcessInstanceInfo implements Transformable {
+public class ProcessInstanceInfo implements PersistentProcessInstance, Transformable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO, generator="processInstanceInfoIdSeq")
