@@ -213,6 +213,7 @@ public class PersistentStatefulSessionTest extends AbstractBaseTest {
     	KieBase kbase = createCPKieBase("WorkItemsProcess.rf");
 
         KieSession ksession = KieServices.Factory.get().getStoreServices().newKieSession( kbase, null, env );
+        ksession.getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
         int origNumObjects = ksession.getObjects().size();
         long id = ksession.getIdentifier();
         
@@ -225,10 +226,12 @@ public class PersistentStatefulSessionTest extends AbstractBaseTest {
         assertNotNull( workItem );
 
         ksession = KieServices.Factory.get().getStoreServices().loadKieSession( id, kbase, null, env );
+        ksession.getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
         processInstance = ksession.getProcessInstance( processInstance.getId() );
         assertNotNull( processInstance );
 
         ksession = KieServices.Factory.get().getStoreServices().loadKieSession( id, kbase, null, env );
+        ksession.getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
         ksession.getWorkItemManager().completeWorkItem( workItem.getId(),
                                                        null );
 
@@ -236,10 +239,12 @@ public class PersistentStatefulSessionTest extends AbstractBaseTest {
         assertNotNull( workItem );
 
         ksession = KieServices.Factory.get().getStoreServices().loadKieSession( id, kbase, null, env );
+        ksession.getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
         processInstance = ksession.getProcessInstance( processInstance.getId() );
         assertNotNull( processInstance );
 
         ksession = KieServices.Factory.get().getStoreServices().loadKieSession( id, kbase, null, env );
+        ksession.getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
         ksession.getWorkItemManager().completeWorkItem( workItem.getId(),
                                                        null );
 
@@ -247,10 +252,12 @@ public class PersistentStatefulSessionTest extends AbstractBaseTest {
         assertNotNull( workItem );
 
         ksession = KieServices.Factory.get().getStoreServices().loadKieSession( id, kbase, null, env );
+        ksession.getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
         processInstance = ksession.getProcessInstance( processInstance.getId() );
         assertNotNull( processInstance );
 
         ksession = KieServices.Factory.get().getStoreServices().loadKieSession( id, kbase, null, env );
+        ksession.getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
         ksession.getWorkItemManager().completeWorkItem( workItem.getId(),
                                                        null );
 
@@ -258,6 +265,7 @@ public class PersistentStatefulSessionTest extends AbstractBaseTest {
         assertNull( workItem );
 
         ksession = KieServices.Factory.get().getStoreServices().loadKieSession( id, kbase, null, env );
+        ksession.getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
         processInstance = ksession.getProcessInstance( processInstance.getId() );
         assertEquals( origNumObjects + 1,
                       ksession.getObjects().size() );
@@ -273,6 +281,7 @@ public class PersistentStatefulSessionTest extends AbstractBaseTest {
     	KieBase kbase = createCPKieBase("WorkItemsProcess.rf");
 
         KieSession ksession = KieServices.Factory.get().getStoreServices().newKieSession( kbase, null, env );
+        ksession.getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
         long id = ksession.getIdentifier();
         
         UserTransaction ut = (UserTransaction) new InitialContext().lookup( "java:comp/UserTransaction" );
@@ -295,10 +304,12 @@ public class PersistentStatefulSessionTest extends AbstractBaseTest {
         ut.commit();
 
         ksession = KieServices.Factory.get().getStoreServices().loadKieSession( id, kbase, null, env );
+        ksession.getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
         processInstance = ksession.getProcessInstance( processInstance.getId() );
         assertNotNull( processInstance );
 
         ksession = KieServices.Factory.get().getStoreServices().loadKieSession( id, kbase, null, env );
+        ksession.getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
         ksession.getWorkItemManager().completeWorkItem( workItem.getId(),
                                                        null );
 
@@ -306,10 +317,12 @@ public class PersistentStatefulSessionTest extends AbstractBaseTest {
         assertNotNull( workItem );
 
         ksession = KieServices.Factory.get().getStoreServices().loadKieSession( id, kbase, null, env );
+        ksession.getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
         processInstance = ksession.getProcessInstance( processInstance.getId() );
         assertNotNull( processInstance );
 
         ksession = KieServices.Factory.get().getStoreServices().loadKieSession( id, kbase, null, env );
+        ksession.getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
         ksession.getWorkItemManager().completeWorkItem( workItem.getId(),
                                                        null );
 
@@ -317,6 +330,7 @@ public class PersistentStatefulSessionTest extends AbstractBaseTest {
         assertNull( workItem );
 
         ksession = KieServices.Factory.get().getStoreServices().loadKieSession( id, kbase, null, env );
+        ksession.getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
         processInstance = ksession.getProcessInstance( processInstance.getId() );
         assertEquals( 1,
                       ksession.getObjects().size() );
@@ -509,6 +523,7 @@ public class PersistentStatefulSessionTest extends AbstractBaseTest {
 
         KieSession ksession = KieServices.Factory.get().getStoreServices().newKieSession( kbase, null, env );
         ksession.getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
+        ksession.getWorkItemManager().registerWorkItemHandler("Human Task", TestWorkItemHandler.getInstance());
         long id = ksession.getIdentifier();
         
         ProcessInstance processInstance = ksession.startProcess( "com.sample.SuperProcess" );
@@ -520,11 +535,13 @@ public class PersistentStatefulSessionTest extends AbstractBaseTest {
 
         ksession = KieServices.Factory.get().getStoreServices().loadKieSession( id, kbase, null, env );
         ksession.getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
+        ksession.getWorkItemManager().registerWorkItemHandler("Human Task", TestWorkItemHandler.getInstance());
         processInstance = ksession.getProcessInstance( processInstance.getId() );
         assertNotNull( processInstance );
 
         ksession = KieServices.Factory.get().getStoreServices().loadKieSession( id, kbase, null, env );
         ksession.getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
+        ksession.getWorkItemManager().registerWorkItemHandler("Human Task", TestWorkItemHandler.getInstance());
         ksession.getWorkItemManager().completeWorkItem( workItem.getId(),
                                                        null );
 
@@ -533,11 +550,13 @@ public class PersistentStatefulSessionTest extends AbstractBaseTest {
 
         ksession = KieServices.Factory.get().getStoreServices().loadKieSession( id, kbase, null, env );
         ksession.getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
+        ksession.getWorkItemManager().registerWorkItemHandler("Human Task", TestWorkItemHandler.getInstance());
         processInstance = ksession.getProcessInstance( processInstance.getId() );
         assertNotNull( processInstance );
 
         ksession = KieServices.Factory.get().getStoreServices().loadKieSession( id, kbase, null, env );
         ksession.getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
+        ksession.getWorkItemManager().registerWorkItemHandler("Human Task", TestWorkItemHandler.getInstance());
         ksession.getWorkItemManager().completeWorkItem( workItem.getId(),
                                                        null );
 
@@ -546,6 +565,7 @@ public class PersistentStatefulSessionTest extends AbstractBaseTest {
 
         ksession = KieServices.Factory.get().getStoreServices().loadKieSession( id, kbase, null, env );
         ksession.getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
+        ksession.getWorkItemManager().registerWorkItemHandler("Human Task", TestWorkItemHandler.getInstance());
         processInstance = ksession.getProcessInstance( processInstance.getId() );
         assertNull( "Process did not complete.", processInstance );
     }

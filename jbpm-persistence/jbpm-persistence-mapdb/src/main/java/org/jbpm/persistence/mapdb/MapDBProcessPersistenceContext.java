@@ -2,10 +2,13 @@ package org.jbpm.persistence.mapdb;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.drools.persistence.TransactionManager;
+import org.drools.persistence.TransactionManagerHelper;
 import org.drools.persistence.mapdb.MapDBPersistenceContext;
 import org.jbpm.persistence.PersistentCorrelationKey;
 import org.jbpm.persistence.PersistentProcessInstance;
@@ -13,6 +16,7 @@ import org.jbpm.persistence.ProcessPersistenceContext;
 import org.kie.internal.process.CorrelationKey;
 import org.mapdb.BTreeMap;
 import org.mapdb.DB;
+import org.mapdb.DBException;
 
 public class MapDBProcessPersistenceContext  extends MapDBPersistenceContext
 	implements ProcessPersistenceContext{
@@ -20,13 +24,22 @@ public class MapDBProcessPersistenceContext  extends MapDBPersistenceContext
 	private final AtomicLong nextId;
 	private final BTreeMap<ProcessKey, PersistentProcessInstance> map;
 	
-	public MapDBProcessPersistenceContext(DB db) {
-		super(db);
-		this.map = db.treeMap("processInstance", 
+	public MapDBProcessPersistenceContext(DB db, TransactionManager txm) {
+		super(db, txm);
+		this.map = db.treeMap(new MapDBProcessInstance().getMapKey(), 
 				new ProcessInstanceKeySerializer(), 
 				new PersistentProcessInstanceSerializer()).
 				createOrOpen();
-		nextId = new AtomicLong(this.map.size() + 1L);
+		Long lastId = null;
+		try {
+			lastId = this.map.lastKey() == null ? 0L : this.map.lastKey().getProcessInstanceId();
+		} catch (NoSuchElementException | DBException.GetVoid t) { 
+			lastId = 0L;
+		}
+		if (lastId == null) {
+			lastId = 0L;
+		}
+		nextId = new AtomicLong(lastId + 1L);
 	}
 	
 	@Override
@@ -41,6 +54,7 @@ public class MapDBProcessPersistenceContext  extends MapDBPersistenceContext
 		}
 		ProcessKey key = new ProcessKey(processInstanceInfo.getId(), processInstanceInfo.getEventTypes(), null);
 		map.put(key, processInstanceInfo);
+		TransactionManagerHelper.addToUpdatableSet(txm, processInstanceInfo);
 		return processInstanceInfo;
 	}
 
@@ -62,23 +76,28 @@ public class MapDBProcessPersistenceContext  extends MapDBPersistenceContext
 	@Override
 	public PersistentProcessInstance findProcessInstanceInfo(Long processId) {
 		NavigableMap<ProcessKey, PersistentProcessInstance> navMap = getSearchMapById(processId);
-		if (navMap.isEmpty()) {
+		try {
+			if (navMap.isEmpty()) {
+				return null;
+			}
+			Entry<ProcessKey, PersistentProcessInstance> entry = navMap.entrySet().iterator().next();
+			if (entry == null) {
+				return null;
+			}
+			if (((MapDBProcessInstance) entry.getValue()).isDeleted()) {
+				return null;
+			}
+			return entry.getValue();
+		} catch (DBException.GetVoid t) {
 			return null;
 		}
-		Entry<ProcessKey, PersistentProcessInstance> entry = navMap.entrySet().iterator().next();
-		if (entry == null) {
-			return null;
-		}
-		if (((MapDBProcessInstance) entry.getValue()).isDeleted()) {
-			return null;
-		}
-		return entry.getValue();
 	}
 
 	@Override
 	public void remove(PersistentProcessInstance processInstanceInfo) {
 		NavigableMap<ProcessKey, PersistentProcessInstance> navMap =
 				getSearchMapById(processInstanceInfo.getId());
+		TransactionManagerHelper.removeFromUpdatableSet(txm, processInstanceInfo);
 		if (!navMap.isEmpty()) {
 			Entry<ProcessKey, PersistentProcessInstance> entry = navMap.entrySet().iterator().next();
 			((MapDBProcessInstance) entry.getValue()).setDeleted(true);
@@ -101,7 +120,7 @@ public class MapDBProcessPersistenceContext  extends MapDBPersistenceContext
 	@Override
 	public void close() {
 		super.close();
-		map.close();
+		//map.close();
 	}
 	
 	@Override

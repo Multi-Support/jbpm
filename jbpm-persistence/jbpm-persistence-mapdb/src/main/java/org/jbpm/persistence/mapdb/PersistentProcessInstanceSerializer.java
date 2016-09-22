@@ -1,6 +1,7 @@
 package org.jbpm.persistence.mapdb;
 
 import java.io.IOException;
+import java.util.Base64;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
@@ -17,24 +18,20 @@ public class PersistentProcessInstanceSerializer extends GroupSerializerObjectAr
 			throws IOException {
 		MapDBProcessInstance inst = (MapDBProcessInstance) value;
 		out.writeLong(inst.getId());
-		out.writeBoolean(inst.getEventTypes() != null);
-		if (inst.getEventTypes() != null) {
-			out.writeInt(inst.getEventTypes().size());
-			for (String type : inst.getEventTypes()) {
-				out.writeUTF(type);
-			}
+		Set<String> eventTypes = inst.getEventTypes() == null ? new HashSet<>() : inst.getEventTypes();
+		out.writeInt(eventTypes.size());
+		for (String type : eventTypes) {
+			out.writeUTF(type);
 		}
 		out.writeLong(inst.getLastModificationDate() == null ? 0L : inst.getLastModificationDate().getTime());
 		out.writeUTF(inst.getProcessId());
 		out.writeLong(inst.getStartDate() == null ? 0L : inst.getStartDate().getTime());
 		out.writeInt(inst.getState());
-		out.writeBoolean(inst.getProcessInstanceByteArray() != null);
-		if (inst.getProcessInstanceByteArray() != null) {
-			out.writeInt(inst.getProcessInstanceByteArray().length);
-			out.write(inst.getProcessInstanceByteArray());
-		} else {
-			throw new IOException("WRITING NULL BYTE ARRAY!");
-		}
+		//out.writeInt(inst.getProcessInstanceByteArray().length);
+		//out.write(inst.getProcessInstanceByteArray());
+		byte[] data = inst.getProcessInstanceByteArray() == null ? new byte[0] : inst.getProcessInstanceByteArray();
+		String base64data = new String(Base64.getEncoder().encode(data));
+		out.writeUTF(base64data);
 	}
 
 	@Override
@@ -42,26 +39,18 @@ public class PersistentProcessInstanceSerializer extends GroupSerializerObjectAr
 			throws IOException {
 		MapDBProcessInstance inst = new MapDBProcessInstance();
 		inst.setId(input.readLong());
-		if (input.readBoolean()) {
-			int size = input.readInt();
-			Set<String> eventTypes = new HashSet<String>();
-			for (int index = 0; index < size; index++) {
-				eventTypes.add(input.readUTF());
-			}
-			inst.setEventTypes(eventTypes);
+		int size = input.readInt();
+		Set<String> eventTypes = new HashSet<String>();
+		for (int index = 0; index < size; index++) {
+			eventTypes.add(input.readUTF());
 		}
+		inst.setEventTypes(eventTypes);
 		inst.setLastModificationDate(new Date(input.readLong()));
 		inst.setProcessId(input.readUTF());
 		inst.setStartDate(new Date(input.readLong()));
 		inst.setState(input.readInt());
-		if (input.readBoolean()) {
-			int size = input.readInt();
-			byte[] procInstByteArray = new byte[size];
-			input.readFully(procInstByteArray);
-			inst.setProcessInstanceByteArray(procInstByteArray);
-		} else { 
-			throw new IOException("READING NULL BYTE ARRAY!");
-		}
+		String encodedData = input.readUTF();
+		inst.setProcessInstanceByteArray(Base64.getDecoder().decode(encodedData));
 		return inst;
 	}
 

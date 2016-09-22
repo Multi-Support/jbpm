@@ -3,7 +3,6 @@ package org.jbpm.persistence.mapdb;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.ConcurrentModificationException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -63,7 +62,8 @@ public class MapDBProcessInstanceManager implements ProcessInstanceManager {
                 MapDBProcessInstance processInstanceInfo = (MapDBProcessInstance) context.findProcessInstanceInfo( id );
                 if ( processInstanceInfo == null ) {
                     return null;
-                }                
+                }
+                processInstanceInfo.setProcessInstance(processInstanceInfo.getProcessInstance(kruntime, kruntime.getEnvironment(), readOnly));
                 TransactionManagerHelper.addToUpdatableSet(txm, processInstanceInfo);
                 processInstanceInfo.updateLastReadDate();
   

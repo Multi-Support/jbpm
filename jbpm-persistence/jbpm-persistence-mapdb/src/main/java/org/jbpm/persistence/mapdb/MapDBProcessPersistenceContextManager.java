@@ -13,7 +13,7 @@ public class MapDBProcessPersistenceContextManager extends MapDBPersistenceConte
 
 	@Override
 	public ProcessPersistenceContext getProcessPersistenceContext() {
-		return new MapDBProcessPersistenceContext(getDB());
+		return new MapDBProcessPersistenceContext(getDB(), getTXM());
 	}
 
 }

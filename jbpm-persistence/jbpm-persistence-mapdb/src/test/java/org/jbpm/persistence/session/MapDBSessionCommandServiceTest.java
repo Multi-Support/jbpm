@@ -15,7 +15,7 @@
 
 package org.jbpm.persistence.session;
 
-import static org.junit.Assert.assertEquals;
+ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
@@ -32,6 +32,7 @@ import javax.transaction.UserTransaction;
 import org.drools.compiler.builder.impl.KnowledgeBuilderImpl;
 import org.drools.core.SessionConfiguration;
 import org.drools.core.TimerJobFactoryType;
+import org.drools.core.command.runtime.AddEventListenerCommand;
 import org.drools.core.command.runtime.process.CompleteWorkItemCommand;
 import org.drools.core.command.runtime.process.GetProcessInstanceCommand;
 import org.drools.core.command.runtime.process.StartProcessCommand;
@@ -63,6 +64,11 @@ import org.jbpm.workflow.instance.node.SubProcessNodeInstance;
 import org.junit.After;
 import org.junit.Test;
 import org.kie.api.KieBase;
+import org.kie.api.event.process.DefaultProcessEventListener;
+import org.kie.api.event.process.ProcessCompletedEvent;
+import org.kie.api.event.process.ProcessNodeLeftEvent;
+import org.kie.api.event.process.ProcessNodeTriggeredEvent;
+import org.kie.api.event.process.ProcessStartedEvent;
 import org.kie.api.runtime.Environment;
 import org.kie.api.runtime.conf.TimerJobFactoryOption;
 import org.kie.api.runtime.process.NodeInstance;
@@ -439,6 +445,7 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
         properties.setProperty( "drools.timerService",
         		MapDBJDKTimerService.class.getName() );
         SessionConfiguration config = SessionConfiguration.newInstance( properties );
+        config.setOption(TimerJobFactoryOption.get("mapdb"));
 
         KieBase ruleBase = KnowledgeBaseFactory.newKnowledgeBase();
         InternalKnowledgePackage pkg = getProcessSubProcess();
@@ -631,8 +638,8 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
         config.setOption( TimerJobFactoryOption.get(TimerJobFactoryType.MAPDB.getId()) );
 
         KieBase kbase = KnowledgeBaseFactory.newKnowledgeBase();
-        Collection<InternalKnowledgePackage> kpkgs = getProcessTimer();
-        ((InternalKnowledgeBase) kbase).addPackages(kpkgs);;
+        Collection<KnowledgePackage> kpkgs = getProcessTimer();
+        ((InternalKnowledgeBase) kbase).addKnowledgePackages(kpkgs);;
 
         MapDBSessionCommandService service = new MapDBSessionCommandService( kbase,
                                                                                config,
@@ -668,7 +675,7 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
         assertNull( processInstance );
     }
 
-	private List<InternalKnowledgePackage> getProcessTimer() {
+	private List<KnowledgePackage> getProcessTimer() {
         RuleFlowProcess process = new RuleFlowProcess();
         process.setId( "org.drools.test.TestProcess" );
         process.setName( "TestProcess" );
@@ -713,7 +720,7 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
         ProcessBuilderImpl processBuilder = new ProcessBuilderImpl( packageBuilder );
         processBuilder.buildProcess( process,
                                      null );
-        List<InternalKnowledgePackage> list = new ArrayList<>();
+        List<KnowledgePackage> list = new ArrayList<>();
         list.add( packageBuilder.getPackage() );
         return list;
     }
@@ -735,7 +742,7 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
         		MapDBJDKTimerService.class.getName() );
 
         SessionConfiguration config = SessionConfiguration.newInstance( properties );
-        config.setOption( TimerJobFactoryOption.get( TimerJobFactoryType.MAPDB.getId()) );
+        config.setOption( TimerJobFactoryOption.get("mapdb") );
         
         KieBase kbase = KnowledgeBaseFactory.newKnowledgeBase();
         Collection<KnowledgePackage> kpkgs = getProcessTimer2();
@@ -749,7 +756,6 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
         startProcessCommand.setProcessId( "org.drools.test.TestProcess" );
         ProcessInstance processInstance = service.execute( startProcessCommand );
         logger.info( "Started process instance {}", processInstance.getId() );
-
         Thread.sleep( 2000 );
 
         service = new MapDBSessionCommandService( sessionId,

@@ -45,7 +45,6 @@ import org.kie.api.KieBase;
 import org.kie.api.KieServices;
 import org.kie.api.io.ResourceType;
 import org.kie.api.runtime.Environment;
-import org.kie.api.runtime.EnvironmentName;
 import org.kie.api.runtime.KieSession;
 import org.kie.internal.builder.KnowledgeBuilder;
 import org.kie.internal.builder.KnowledgeBuilderFactory;
@@ -131,7 +130,6 @@ public class GetProcessInstancesTest extends AbstractBaseTest {
         long[] notProcess = new long[2];
 
         UserTransaction ut = (UserTransaction) new InitialContext().lookup( "java:comp/UserTransaction" );
-        if (ut.getStatus() == Status.STATUS_ACTIVE) ut.commit();
         ut.begin();
         
         KieSession ksession = reloadKnowledgeSession();
@@ -156,7 +154,7 @@ public class GetProcessInstancesTest extends AbstractBaseTest {
 
         KieSession ksession = reloadKnowledgeSession();
         
-        UserTransaction ut = (UserTransaction) context.get(EnvironmentName.TRANSACTION);
+        UserTransaction ut = (UserTransaction) new InitialContext().lookup( "java:comp/UserTransaction" );
         ut.begin();
         
         notProcess[0] = ksession.createProcessInstance("org.jbpm.processinstance.helloworld", null).getId();

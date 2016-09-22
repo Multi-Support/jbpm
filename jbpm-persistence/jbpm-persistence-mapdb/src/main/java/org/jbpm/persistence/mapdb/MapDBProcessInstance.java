@@ -15,6 +15,7 @@ import org.drools.core.marshalling.impl.MarshallerReaderContext;
 import org.drools.core.marshalling.impl.PersisterHelper;
 import org.drools.core.marshalling.impl.ProcessMarshallerWriteContext;
 import org.drools.core.marshalling.impl.ProtobufMarshaller;
+import org.drools.persistence.mapdb.MapDBTransformable;
 import org.jbpm.marshalling.impl.JBPMMessages;
 import org.jbpm.marshalling.impl.ProcessInstanceMarshaller;
 import org.jbpm.marshalling.impl.ProcessMarshallerRegistry;
@@ -24,8 +25,10 @@ import org.jbpm.process.instance.impl.ProcessInstanceImpl;
 import org.jbpm.workflow.instance.impl.WorkflowProcessInstanceImpl;
 import org.kie.api.runtime.Environment;
 import org.kie.api.runtime.process.ProcessInstance;
+import org.mapdb.BTreeMap;
+import org.mapdb.DB;
 
-public class MapDBProcessInstance implements PersistentProcessInstance {
+public class MapDBProcessInstance implements PersistentProcessInstance, MapDBTransformable {
 
 	private Long id;
 	private ProcessInstance processInstance;
@@ -53,8 +56,8 @@ public class MapDBProcessInstance implements PersistentProcessInstance {
 	public void transform() {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try {
-            ProcessMarshallerWriteContext context = new ProcessMarshallerWriteContext( baos,
-            		null, null, null, null, this.env );
+            ProcessMarshallerWriteContext context = new ProcessMarshallerWriteContext( 
+            		baos, null, null, null, null, this.env );
             context.setProcessInstanceId(processInstance.getId());
             context.setState(processInstance.getState() == ProcessInstance.STATE_ACTIVE ? 
                     ProcessMarshallerWriteContext.STATE_ACTIVE:ProcessMarshallerWriteContext.STATE_COMPLETED);
@@ -193,6 +196,7 @@ public class MapDBProcessInstance implements PersistentProcessInstance {
 		return env;
 	}
 	
+	@Override
 	public void setEnvironment(Environment env) {
 		this.env = env;
 	}
@@ -203,5 +207,92 @@ public class MapDBProcessInstance implements PersistentProcessInstance {
 
 	public boolean isDeleted() {
 		return deleted;
+	}
+	
+	@Override
+	public String getMapKey() {
+		return "process";
+	}
+
+	@Override
+	public boolean updateOnMap(DB db) {
+		BTreeMap<ProcessKey, PersistentProcessInstance> tmap = db.treeMap(
+				getMapKey(), 
+				new ProcessInstanceKeySerializer(), 
+				new PersistentProcessInstanceSerializer()).open();
+		ProcessKey key = new ProcessKey(id, eventTypes, null);
+		tmap.put(key, this);
+		return true;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + (deleted ? 1231 : 1237);
+		result = prime * result + ((env == null) ? 0 : env.hashCode());
+		result = prime * result + ((eventTypes == null) ? 0 : eventTypes.hashCode());
+		result = prime * result + ((id == null) ? 0 : id.hashCode());
+		result = prime * result + ((lastModificationDate == null) ? 0 : lastModificationDate.hashCode());
+		result = prime * result + ((processId == null) ? 0 : processId.hashCode());
+		result = prime * result + ((processInstance == null) ? 0 : processInstance.hashCode());
+		result = prime * result + Arrays.hashCode(processInstanceByteArray);
+		result = prime * result + ((startDate == null) ? 0 : startDate.hashCode());
+		result = prime * result + state;
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		MapDBProcessInstance other = (MapDBProcessInstance) obj;
+		if (deleted != other.deleted)
+			return false;
+		if (env == null) {
+			if (other.env != null)
+				return false;
+		} else if (!env.equals(other.env))
+			return false;
+		if (eventTypes == null) {
+			if (other.eventTypes != null)
+				return false;
+		} else if (!eventTypes.equals(other.eventTypes))
+			return false;
+		if (id == null) {
+			if (other.id != null)
+				return false;
+		} else if (!id.equals(other.id))
+			return false;
+		if (lastModificationDate == null) {
+			if (other.lastModificationDate != null)
+				return false;
+		} else if (!lastModificationDate.equals(other.lastModificationDate))
+			return false;
+		if (processId == null) {
+			if (other.processId != null)
+				return false;
+		} else if (!processId.equals(other.processId))
+			return false;
+		if (processInstance == null) {
+			if (other.processInstance != null)
+				return false;
+		} else if (!processInstance.equals(other.processInstance))
+			return false;
+		if (!Arrays.equals(processInstanceByteArray,
+				other.processInstanceByteArray))
+			return false;
+		if (startDate == null) {
+			if (other.startDate != null)
+				return false;
+		} else if (!startDate.equals(other.startDate))
+			return false;
+		if (state != other.state)
+			return false;
+		return true;
 	}
 }

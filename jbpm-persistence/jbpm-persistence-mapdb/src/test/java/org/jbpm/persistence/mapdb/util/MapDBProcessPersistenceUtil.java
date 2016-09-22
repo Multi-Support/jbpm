@@ -14,7 +14,6 @@ import javax.transaction.UserTransaction;
 import org.drools.core.base.MapGlobalResolver;
 import org.drools.core.impl.EnvironmentFactory;
 import org.drools.persistence.mapdb.KnowledgeStoreServiceImpl;
-import org.drools.persistence.mapdb.MapDBUserTransaction;
 import org.kie.api.runtime.Environment;
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
@@ -35,9 +34,8 @@ public class MapDBProcessPersistenceUtil {
 		new KnowledgeStoreServiceImpl(); //TODO this reference is to make sure it registers the store service
 		HashMap<String, Object> context = new HashMap<>();
 		DB db = makeDB();
-		UserTransaction ut = new MapDBUserTransaction(db);
 		context.put(DB_OBJECT, db);
-		context.put(TRANSACTION, ut);
+		//context.put(TRANSACTION, new MapDBUserTransaction(db));
 		return context;
 	}
 
