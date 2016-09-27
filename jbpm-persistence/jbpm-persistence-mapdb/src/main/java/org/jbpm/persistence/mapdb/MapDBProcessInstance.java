@@ -3,7 +3,6 @@ package org.jbpm.persistence.mapdb;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
@@ -27,7 +26,6 @@ import org.kie.api.runtime.Environment;
 import org.kie.api.runtime.process.ProcessInstance;
 import org.mapdb.BTreeMap;
 import org.mapdb.DB;
-import org.mapdb.Serializer;
 
 public class MapDBProcessInstance implements PersistentProcessInstance, MapDBTransformable {
 
@@ -213,7 +211,7 @@ public class MapDBProcessInstance implements PersistentProcessInstance, MapDBTra
 
 	@Override
 	public boolean updateOnMap(DB db) {
-		BTreeMap<Long, PersistentProcessInstance> byId = db.treeMap(
+		/*BTreeMap<Long, PersistentProcessInstance> byId = db.treeMap(
 				getMapKey() + "ById", Serializer.LONG,
 				new PersistentProcessInstanceSerializer()).open();
 		byId.put(getId(), this);
@@ -231,6 +229,12 @@ public class MapDBProcessInstance implements PersistentProcessInstance, MapDBTra
 				byEventTypes.put(eventType, ids);
 			}
 		}
+		return true;*/
+		BTreeMap<ProcessKey, PersistentProcessInstance> map = db.treeMap(
+				getMapKey(), new ProcessInstanceKeySerializer(), 
+				new PersistentProcessInstanceSerializer()).open();
+		ProcessKey key = new ProcessKey(getId(), getEventTypes(), null);
+		map.put(key, this);
 		return true;
 	}
 

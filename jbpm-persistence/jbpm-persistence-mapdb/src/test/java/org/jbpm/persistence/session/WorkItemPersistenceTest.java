@@ -45,6 +45,8 @@ import org.drools.persistence.mapdb.MapDBEnvironmentName;
 import org.jbpm.persistence.PersistentProcessInstance;
 import org.jbpm.persistence.mapdb.MapDBProcessInstance;
 import org.jbpm.persistence.mapdb.PersistentProcessInstanceSerializer;
+import org.jbpm.persistence.mapdb.ProcessInstanceKeySerializer;
+import org.jbpm.persistence.mapdb.ProcessKey;
 import org.jbpm.persistence.mapdb.util.MapDBProcessPersistenceUtil;
 import org.jbpm.process.core.context.variable.Variable;
 import org.jbpm.process.instance.ProcessRuntimeFactoryServiceImpl;
@@ -73,7 +75,6 @@ import org.kie.internal.KnowledgeBaseFactory;
 import org.kie.internal.io.ResourceFactory;
 import org.mapdb.BTreeMap;
 import org.mapdb.DB;
-import org.mapdb.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -310,8 +311,8 @@ public class WorkItemPersistenceTest extends AbstractBaseTest {
     @SuppressWarnings("unchecked")
     public static ArrayList<PersistentProcessInstance> retrieveProcessInstances(DB db) { 
         ArrayList<PersistentProcessInstance> procInstInfoList = new ArrayList<PersistentProcessInstance>();
-        BTreeMap<Long, PersistentProcessInstance> map = db.treeMap(new MapDBProcessInstance().getMapKey() + "ById", 
-        		Serializer.LONG, new PersistentProcessInstanceSerializer()).createOrOpen();
+        BTreeMap<ProcessKey, PersistentProcessInstance> map = db.treeMap(new MapDBProcessInstance().getMapKey(), 
+        		new ProcessInstanceKeySerializer(), new PersistentProcessInstanceSerializer()).createOrOpen();
         Collection<PersistentProcessInstance> mdList = map.values();
         for( PersistentProcessInstance resultObject : mdList ) { 
             procInstInfoList.add(resultObject);

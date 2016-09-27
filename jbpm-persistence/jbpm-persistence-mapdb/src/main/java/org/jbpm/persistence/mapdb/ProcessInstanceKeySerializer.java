@@ -32,15 +32,27 @@ public class ProcessInstanceKeySerializer extends GroupSerializerObjectArray<Pro
 		}
 		out.writeBoolean(key != null);
 		if (key != null) {
-			out.writeUTF(key.getName());
+			out.writeBoolean(key.getName() != null);
+			if (key.getName() != null) {
+				out.writeUTF(key.getName());
+			}
 			out.writeLong(key.getId());
 			out.writeLong(key.getProcessInstanceId());
 			out.writeInt(key.getProperties() == null ? 0 : key.getProperties().size());
 			if (key.getProperties() != null) {
 				for (CorrelationProperty<?> prop : key.getProperties()) {
-					out.writeUTF(prop.getName());
-					out.writeUTF(prop.getType());
-					out.writeUTF(prop.getValue() == null ? null : prop.getValue().toString());
+					out.writeBoolean(prop.getName() != null);
+					if (prop.getName() != null) {
+						out.writeUTF(prop.getName());
+					}
+					out.writeBoolean(prop.getType() != null);
+					if (prop.getType() != null) {
+						out.writeUTF(prop.getType());
+					}
+					out.writeBoolean(prop.getValue() != null);
+					if (prop.getValue() != null) {
+						out.writeUTF(prop.getValue().toString());
+					}
 				}
 			}
 		}
@@ -64,16 +76,24 @@ public class ProcessInstanceKeySerializer extends GroupSerializerObjectArray<Pro
 		}
 		if (input.readBoolean()) {
 			corrKey = new MapDBCorrelationKey();
-			corrKey.setName(input.readUTF());
+			if (input.readBoolean()) {
+				corrKey.setName(input.readUTF());
+			}
 			corrKey.setId(input.readLong());
 			corrKey.setProcessInstanceId(input.readLong());
 			int size = input.readInt();
 			List<CorrelationProperty<?>> properties = new ArrayList<>(size);
 			for (int index = 0; index < size; index++) {
 				MapDBCorrelationProperty prop = new MapDBCorrelationProperty();
-				prop.setName(input.readUTF());
-				prop.setType(input.readUTF());
-				prop.setValue(input.readUTF());
+				if (input.readBoolean()) {
+					prop.setName(input.readUTF());
+				}
+				if (input.readBoolean()) {
+					prop.setType(input.readUTF());
+				}
+				if (input.readBoolean()) {
+					prop.setValue(input.readUTF());
+				}
 				properties.add(prop);
 			}
 			corrKey.setProperties(properties);
