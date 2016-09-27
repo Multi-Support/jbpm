@@ -27,6 +27,7 @@ import org.kie.api.runtime.Environment;
 import org.kie.api.runtime.process.ProcessInstance;
 import org.mapdb.BTreeMap;
 import org.mapdb.DB;
+import org.mapdb.Serializer;
 
 public class MapDBProcessInstance implements PersistentProcessInstance, MapDBTransformable {
 
@@ -54,44 +55,41 @@ public class MapDBProcessInstance implements PersistentProcessInstance, MapDBTra
 
 	@Override
 	public void transform() {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try {
-            ProcessMarshallerWriteContext context = new ProcessMarshallerWriteContext( 
-            		baos, null, null, null, null, this.env );
-            context.setProcessInstanceId(processInstance.getId());
-            context.setState(processInstance.getState() == ProcessInstance.STATE_ACTIVE ? 
-                    ProcessMarshallerWriteContext.STATE_ACTIVE:ProcessMarshallerWriteContext.STATE_COMPLETED);
+		if (deleted == false) {
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			try {
+				ProcessMarshallerWriteContext context = new ProcessMarshallerWriteContext( 
+						baos, null, null, null, null, this.env );
+				context.setProcessInstanceId(processInstance.getId());
+				context.setState(processInstance.getState() == ProcessInstance.STATE_ACTIVE ? 
+						ProcessMarshallerWriteContext.STATE_ACTIVE:ProcessMarshallerWriteContext.STATE_COMPLETED);
             
-            String processType = ((ProcessInstanceImpl) processInstance).getProcess().getType();
-            context.stream.writeUTF( processType );
-            ProcessInstanceMarshaller marshaller = ProcessMarshallerRegistry.INSTANCE.getMarshaller( processType );
+				String processType = ((ProcessInstanceImpl) processInstance).getProcess().getType();
+				context.stream.writeUTF( processType );
+				ProcessInstanceMarshaller marshaller = ProcessMarshallerRegistry.INSTANCE.getMarshaller( processType );
             
-            Object result = marshaller.writeProcessInstance( context,
+				Object result = marshaller.writeProcessInstance( context,
                                                              processInstance);
-            if( marshaller instanceof ProtobufRuleFlowProcessInstanceMarshaller && result != null ) {
-                JBPMMessages.ProcessInstance _instance = (JBPMMessages.ProcessInstance)result;
-                PersisterHelper.writeToStreamWithHeader( context, 
-                                                         _instance );
-            }
-            context.close();
-        } catch ( IOException e ) {
-            throw new IllegalArgumentException( "IOException while storing process instance "
-        		+ processInstance.getId() + ": " + e.getMessage(), e );
-        }
-        byte[] newByteArray = baos.toByteArray();
-        if ( !Arrays.equals( newByteArray, processInstanceByteArray ) ) {
-            this.state = processInstance.getState();
-            this.lastModificationDate = new Date();
-            this.processInstanceByteArray = newByteArray;
-            this.eventTypes.clear();
-            for ( String type : processInstance.getEventTypes() ) {
-                eventTypes.add( type );
-            }
-        }
-        if (!processInstance.getProcessId().equals(this.processId)) {
-    		this.processId = processInstance.getProcessId();
-    	}
-        ((WorkflowProcessInstanceImpl) processInstance).setPersisted(true);
+				if( marshaller instanceof ProtobufRuleFlowProcessInstanceMarshaller && result != null ) {
+					JBPMMessages.ProcessInstance _instance = (JBPMMessages.ProcessInstance)result;
+					PersisterHelper.writeToStreamWithHeader( context, _instance );
+				}
+				context.close();
+			} catch ( IOException e ) {
+				throw new IllegalArgumentException( "IOException while storing process instance "
+						+ processInstance.getId() + ": " + e.getMessage(), e );
+			}
+			byte[] newByteArray = baos.toByteArray();
+			this.state = processInstance.getState();
+			this.lastModificationDate = new Date();
+			this.processInstanceByteArray = newByteArray;
+			this.eventTypes.clear();
+			for ( String type : processInstance.getEventTypes() ) {
+				eventTypes.add( type );
+			}
+			this.processId = processInstance.getProcessId();
+			((WorkflowProcessInstanceImpl) processInstance).setPersisted(true);
+		}
 	}
 
 	public Long getId() {
@@ -104,10 +102,6 @@ public class MapDBProcessInstance implements PersistentProcessInstance, MapDBTra
 
 	public ProcessInstance getProcessInstance() {
 		return processInstance;
-	}
-
-	public void setProcessInstance(ProcessInstance processInstance) {
-		this.processInstance = processInstance;
 	}
 
 	public String getProcessId() {
@@ -135,6 +129,9 @@ public class MapDBProcessInstance implements PersistentProcessInstance, MapDBTra
 	}
 
 	public int getState() {
+		if (state == 0 && processInstance != null) {
+			state = processInstance.getState();
+		}
 		return state;
 	}
 
@@ -202,7 +199,7 @@ public class MapDBProcessInstance implements PersistentProcessInstance, MapDBTra
 	}
 
 	public void setDeleted(boolean deleted) {
-		this.deleted = true;
+		this.deleted = deleted;
 	}
 
 	public boolean isDeleted() {
@@ -216,30 +213,30 @@ public class MapDBProcessInstance implements PersistentProcessInstance, MapDBTra
 
 	@Override
 	public boolean updateOnMap(DB db) {
-		BTreeMap<ProcessKey, PersistentProcessInstance> tmap = db.treeMap(
-				getMapKey(), 
-				new ProcessInstanceKeySerializer(), 
+		BTreeMap<Long, PersistentProcessInstance> byId = db.treeMap(
+				getMapKey() + "ById", Serializer.LONG,
 				new PersistentProcessInstanceSerializer()).open();
-		ProcessKey key = new ProcessKey(id, eventTypes, null);
-		tmap.put(key, this);
+		byId.put(getId(), this);
+		BTreeMap<String, long[]> byEventTypes = db.treeMap(
+				getMapKey() + "ByEventTypes", 
+				Serializer.STRING, Serializer.LONG_ARRAY).open();
+		if (getEventTypes() != null) {
+			for (String eventType : getEventTypes()) {
+				long[] ids = new long[] { getId() };
+				if (byEventTypes.containsKey(eventType)) {
+					long[] otherIds = byEventTypes.get(eventType);
+					ids = Arrays.copyOf(otherIds, otherIds.length + 1);
+					ids[ids.length - 1] = getId();
+				}
+				byEventTypes.put(eventType, ids);
+			}
+		}
 		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		final int prime = 31;
-		int result = 1;
-		result = prime * result + (deleted ? 1231 : 1237);
-		result = prime * result + ((env == null) ? 0 : env.hashCode());
-		result = prime * result + ((eventTypes == null) ? 0 : eventTypes.hashCode());
-		result = prime * result + ((id == null) ? 0 : id.hashCode());
-		result = prime * result + ((lastModificationDate == null) ? 0 : lastModificationDate.hashCode());
-		result = prime * result + ((processId == null) ? 0 : processId.hashCode());
-		result = prime * result + ((processInstance == null) ? 0 : processInstance.hashCode());
-		result = prime * result + Arrays.hashCode(processInstanceByteArray);
-		result = prime * result + ((startDate == null) ? 0 : startDate.hashCode());
-		result = prime * result + state;
-		return result;
+		return id.hashCode();
 	}
 
 	@Override
@@ -251,47 +248,10 @@ public class MapDBProcessInstance implements PersistentProcessInstance, MapDBTra
 		if (getClass() != obj.getClass())
 			return false;
 		MapDBProcessInstance other = (MapDBProcessInstance) obj;
-		if (deleted != other.deleted)
-			return false;
-		if (env == null) {
-			if (other.env != null)
-				return false;
-		} else if (!env.equals(other.env))
-			return false;
-		if (eventTypes == null) {
-			if (other.eventTypes != null)
-				return false;
-		} else if (!eventTypes.equals(other.eventTypes))
-			return false;
 		if (id == null) {
 			if (other.id != null)
 				return false;
 		} else if (!id.equals(other.id))
-			return false;
-		if (lastModificationDate == null) {
-			if (other.lastModificationDate != null)
-				return false;
-		} else if (!lastModificationDate.equals(other.lastModificationDate))
-			return false;
-		if (processId == null) {
-			if (other.processId != null)
-				return false;
-		} else if (!processId.equals(other.processId))
-			return false;
-		if (processInstance == null) {
-			if (other.processInstance != null)
-				return false;
-		} else if (!processInstance.equals(other.processInstance))
-			return false;
-		if (!Arrays.equals(processInstanceByteArray,
-				other.processInstanceByteArray))
-			return false;
-		if (startDate == null) {
-			if (other.startDate != null)
-				return false;
-		} else if (!startDate.equals(other.startDate))
-			return false;
-		if (state != other.state)
 			return false;
 		return true;
 	}

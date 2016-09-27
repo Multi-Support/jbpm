@@ -1,10 +1,9 @@
 package org.jbpm.persistence.mapdb;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.Map.Entry;
-import java.util.NavigableMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.drools.persistence.TransactionManager;
@@ -17,22 +16,28 @@ import org.kie.internal.process.CorrelationKey;
 import org.mapdb.BTreeMap;
 import org.mapdb.DB;
 import org.mapdb.DBException;
+import org.mapdb.Serializer;
 
 public class MapDBProcessPersistenceContext  extends MapDBPersistenceContext
 	implements ProcessPersistenceContext{
 
 	private final AtomicLong nextId;
-	private final BTreeMap<ProcessKey, PersistentProcessInstance> map;
+	private final BTreeMap<String, long[]> mapByEventTypes;
+	private final BTreeMap<Long, PersistentProcessInstance> mapById;
+	private final BTreeMap<PersistentCorrelationKey, Long> mapByCK;
 	
 	public MapDBProcessPersistenceContext(DB db, TransactionManager txm) {
 		super(db, txm);
-		this.map = db.treeMap(new MapDBProcessInstance().getMapKey(), 
-				new ProcessInstanceKeySerializer(), 
-				new PersistentProcessInstanceSerializer()).
-				createOrOpen();
+		String keyPrefix = new MapDBProcessInstance().getMapKey();
+		this.mapById = db.treeMap(keyPrefix + "ById", 
+				Serializer.LONG, new PersistentProcessInstanceSerializer()).createOrOpen();
+		this.mapByEventTypes = db.treeMap(keyPrefix + "ByEventTypes",
+				Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
+		this.mapByCK = db.treeMap(keyPrefix + "ByCK", 
+				new PersistentCorrelationKeySerializer(), Serializer.LONG).createOrOpen();
 		Long lastId = null;
 		try {
-			lastId = this.map.lastKey() == null ? 0L : this.map.lastKey().getProcessInstanceId();
+			lastId = this.mapById.lastKey() == null ? 0L : this.mapById.lastKey();
 		} catch (NoSuchElementException | DBException.GetVoid t) { 
 			lastId = 0L;
 		}
@@ -52,8 +57,18 @@ public class MapDBProcessPersistenceContext  extends MapDBPersistenceContext
 		} else {
 			id = processInstanceInfo.getId();
 		}
-		ProcessKey key = new ProcessKey(processInstanceInfo.getId(), processInstanceInfo.getEventTypes(), null);
-		map.put(key, processInstanceInfo);
+		mapById.put(processInstanceInfo.getId(), processInstanceInfo);
+		if (processInstanceInfo.getEventTypes() != null) {
+			for (String eventType : processInstanceInfo.getEventTypes()) {
+				long[] ids = new long[] { processInstanceInfo.getId() };
+				if (mapByEventTypes.containsKey(eventType)) {
+					long[] otherIds = mapByEventTypes.get(eventType);
+					ids = Arrays.copyOf(otherIds, otherIds.length + 1);
+					ids[ids.length - 1] = processInstanceInfo.getId();
+				}
+				mapByEventTypes.put(eventType, ids);
+			}
+		}
 		TransactionManagerHelper.addToUpdatableSet(txm, processInstanceInfo);
 		return processInstanceInfo;
 	}
@@ -61,58 +76,44 @@ public class MapDBProcessPersistenceContext  extends MapDBPersistenceContext
 	@Override
 	public PersistentCorrelationKey persist(PersistentCorrelationKey correlationKeyInfo) {
 		long processInstanceId = correlationKeyInfo.getProcessInstanceId();
-		NavigableMap<ProcessKey, PersistentProcessInstance> navMap = getSearchMapById(processInstanceId);
-		if (!navMap.isEmpty()) {
-			Entry<ProcessKey, PersistentProcessInstance> entry = navMap.entrySet().iterator().next();
-			ProcessKey oldKey = entry.getKey();
-			ProcessKey newKey = new ProcessKey(processInstanceId, oldKey.getTypes(), correlationKeyInfo);
-			PersistentProcessInstance value = entry.getValue();
-			map.remove(oldKey);
-			map.put(newKey, value);
-		}
+		mapByCK.put(correlationKeyInfo, processInstanceId);
 		return correlationKeyInfo;
 	}
 
 	@Override
 	public PersistentProcessInstance findProcessInstanceInfo(Long processId) {
-		NavigableMap<ProcessKey, PersistentProcessInstance> navMap = getSearchMapById(processId);
 		try {
-			if (navMap.isEmpty()) {
+			if (!mapById.containsKey(processId)) {
 				return null;
 			}
-			Entry<ProcessKey, PersistentProcessInstance> entry = navMap.entrySet().iterator().next();
-			if (entry == null) {
+			PersistentProcessInstance inst = mapById.get(processId);
+			if (((MapDBProcessInstance)inst).isDeleted()) {
 				return null;
 			}
-			if (((MapDBProcessInstance) entry.getValue()).isDeleted()) {
-				return null;
-			}
-			return entry.getValue();
-		} catch (DBException.GetVoid t) {
+			TransactionManagerHelper.addToUpdatableSet(txm, inst);
+			return inst;
+		} catch (Throwable t) {
 			return null;
 		}
 	}
 
 	@Override
 	public void remove(PersistentProcessInstance processInstanceInfo) {
-		NavigableMap<ProcessKey, PersistentProcessInstance> navMap =
-				getSearchMapById(processInstanceInfo.getId());
 		TransactionManagerHelper.removeFromUpdatableSet(txm, processInstanceInfo);
-		if (!navMap.isEmpty()) {
-			Entry<ProcessKey, PersistentProcessInstance> entry = navMap.entrySet().iterator().next();
-			((MapDBProcessInstance) entry.getValue()).setDeleted(true);
-			map.put(entry.getKey(), entry.getValue());
-		}
+		//((MapDBProcessInstance) processInstanceInfo).setDeleted(true);
+		mapById.remove(processInstanceInfo.getId());//, processInstanceInfo);
+		//TransactionManagerHelper.removeFromUpdatableSet(txm, processInstanceInfo);
 	}
 
 	@Override
 	public List<Long> getProcessInstancesWaitingForEvent(String type) {
-		NavigableMap<ProcessKey, PersistentProcessInstance> navMap = getSearchMapByEventType(type); 
-		List<Long> retval = new ArrayList<>(navMap.size());
-		for (ProcessKey key : navMap.keySet()) {
-			if (!((MapDBProcessInstance) navMap.get(key)).isDeleted()) {
-				retval.add(key.getProcessInstanceId());
-			}
+		if (!mapByEventTypes.containsKey(type)) {
+			return new ArrayList<>();
+		}
+		long[] values = mapByEventTypes.get(type);
+		List<Long> retval = new ArrayList<>();
+		for (long value : values) {
+			retval.add(value);
 		}
 		return retval;
 	}
@@ -125,29 +126,6 @@ public class MapDBProcessPersistenceContext  extends MapDBPersistenceContext
 	
 	@Override
 	public Long getProcessInstanceByCorrelationKey(CorrelationKey correlationKey) {
-		NavigableMap<ProcessKey, PersistentProcessInstance> navMap = getSearchMapByCK(correlationKey);
-		if (navMap.isEmpty()) {
-			return null;
-		}
-		Entry<ProcessKey, PersistentProcessInstance> entry = navMap.entrySet().iterator().next();
-		if (!((MapDBProcessInstance) entry.getValue()).isDeleted()) {
-			entry.getValue().getId();
-		}
-		return null;
-	}
-	
-	protected NavigableMap<ProcessKey, PersistentProcessInstance> getSearchMapByEventType(String type) {
-		ProcessKey fromKey = new ProcessKey(Long.MIN_VALUE, new String[] { type }, null);
-		ProcessKey toKey = new ProcessKey(Long.MAX_VALUE, new String[] { type }, null);
-		return map.subMap(fromKey, toKey);
-	}
-
-	protected NavigableMap<ProcessKey, PersistentProcessInstance> getSearchMapById(Long id) {
-		return map.prefixSubMap(new ProcessKey(id, (String[]) null, null));
-	}
-	
-	protected NavigableMap<ProcessKey, PersistentProcessInstance> getSearchMapByCK(CorrelationKey key) {
-		return map.subMap(new ProcessKey(Long.MIN_VALUE, new String[0], key), 
-				new ProcessKey(Long.MAX_VALUE, new String[0], key));
+		return mapByCK.getOrDefault(correlationKey, null);
 	}
 }

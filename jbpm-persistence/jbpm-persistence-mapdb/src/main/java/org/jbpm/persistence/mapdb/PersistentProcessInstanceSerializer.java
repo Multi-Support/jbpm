@@ -14,10 +14,12 @@ import org.mapdb.serializer.GroupSerializerObjectArray;
 public class PersistentProcessInstanceSerializer extends GroupSerializerObjectArray<PersistentProcessInstance> {
 
 	@Override
-	public void serialize(DataOutput2 out, PersistentProcessInstance value)
-			throws IOException {
+	public void serialize(DataOutput2 out, PersistentProcessInstance value) throws IOException {
 		MapDBProcessInstance inst = (MapDBProcessInstance) value;
 		out.writeLong(inst.getId());
+		System.err.println("WRITING state = " + inst.getState() + " FROM THIS THREAD");
+		printStackTrace();
+		out.writeInt(inst.getState());
 		Set<String> eventTypes = inst.getEventTypes() == null ? new HashSet<>() : inst.getEventTypes();
 		out.writeInt(eventTypes.size());
 		for (String type : eventTypes) {
@@ -26,19 +28,25 @@ public class PersistentProcessInstanceSerializer extends GroupSerializerObjectAr
 		out.writeLong(inst.getLastModificationDate() == null ? 0L : inst.getLastModificationDate().getTime());
 		out.writeUTF(inst.getProcessId());
 		out.writeLong(inst.getStartDate() == null ? 0L : inst.getStartDate().getTime());
-		out.writeInt(inst.getState());
-		//out.writeInt(inst.getProcessInstanceByteArray().length);
-		//out.write(inst.getProcessInstanceByteArray());
 		byte[] data = inst.getProcessInstanceByteArray() == null ? new byte[0] : inst.getProcessInstanceByteArray();
 		String base64data = new String(Base64.getEncoder().encode(data));
 		out.writeUTF(base64data);
 	}
 
+	private void printStackTrace() {
+		StackTraceElement[] trace = Thread.currentThread().getStackTrace();
+		for (StackTraceElement traceElement : trace) {
+			if (traceElement.getClassName().startsWith("org.jbpm.") || traceElement.getClassName().startsWith("org.drools.")) {
+				System.err.println("\tat " + traceElement);
+			}
+		}
+	}
+
 	@Override
-	public PersistentProcessInstance deserialize(DataInput2 input, int available)
-			throws IOException {
+	public PersistentProcessInstance deserialize(DataInput2 input, int available) throws IOException {
 		MapDBProcessInstance inst = new MapDBProcessInstance();
 		inst.setId(input.readLong());
+		inst.setState(input.readInt());
 		int size = input.readInt();
 		Set<String> eventTypes = new HashSet<String>();
 		for (int index = 0; index < size; index++) {
@@ -48,7 +56,6 @@ public class PersistentProcessInstanceSerializer extends GroupSerializerObjectAr
 		inst.setLastModificationDate(new Date(input.readLong()));
 		inst.setProcessId(input.readUTF());
 		inst.setStartDate(new Date(input.readLong()));
-		inst.setState(input.readInt());
 		String encodedData = input.readUTF();
 		inst.setProcessInstanceByteArray(Base64.getDecoder().decode(encodedData));
 		return inst;
@@ -56,7 +63,9 @@ public class PersistentProcessInstanceSerializer extends GroupSerializerObjectAr
 
 	@Override
 	public int compare(PersistentProcessInstance p1, PersistentProcessInstance p2) {
-		return p1.getId().compareTo(p2.getId());
+		ProcessKey key1 = new ProcessKey(p1.getId(), p1.getEventTypes(), null);
+		ProcessKey key2 = new ProcessKey(p2.getId(), p2.getEventTypes(), null);
+		return key1.compareTo(key2);
 	}
 
 }

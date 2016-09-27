@@ -32,7 +32,6 @@ import java.util.Set;
 
 import org.drools.compiler.Person;
 import org.drools.core.WorkItemHandlerNotFoundException;
-import org.drools.core.impl.EnvironmentFactory;
 import org.drools.core.impl.KnowledgeBaseImpl;
 import org.drools.core.process.core.ParameterDefinition;
 import org.drools.core.process.core.Work;
@@ -44,9 +43,8 @@ import org.drools.core.process.core.impl.WorkImpl;
 import org.drools.core.runtime.process.ProcessRuntimeFactory;
 import org.drools.persistence.mapdb.MapDBEnvironmentName;
 import org.jbpm.persistence.PersistentProcessInstance;
+import org.jbpm.persistence.mapdb.MapDBProcessInstance;
 import org.jbpm.persistence.mapdb.PersistentProcessInstanceSerializer;
-import org.jbpm.persistence.mapdb.ProcessInstanceKeySerializer;
-import org.jbpm.persistence.mapdb.ProcessKey;
 import org.jbpm.persistence.mapdb.util.MapDBProcessPersistenceUtil;
 import org.jbpm.process.core.context.variable.Variable;
 import org.jbpm.process.instance.ProcessRuntimeFactoryServiceImpl;
@@ -67,7 +65,6 @@ import org.kie.api.KieBase;
 import org.kie.api.KieServices;
 import org.kie.api.builder.KieBuilder;
 import org.kie.api.builder.KieFileSystem;
-import org.kie.api.runtime.Environment;
 import org.kie.api.runtime.KieSession;
 import org.kie.api.runtime.process.ProcessInstance;
 import org.kie.api.runtime.process.WorkItem;
@@ -76,10 +73,10 @@ import org.kie.internal.KnowledgeBaseFactory;
 import org.kie.internal.io.ResourceFactory;
 import org.mapdb.BTreeMap;
 import org.mapdb.DB;
+import org.mapdb.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@org.junit.Ignore("NEXT: ignore for commit") 
 public class WorkItemPersistenceTest extends AbstractBaseTest {
 
     private static final Logger logger = LoggerFactory.getLogger(WorkItemPersistenceTest.class);
@@ -313,8 +310,8 @@ public class WorkItemPersistenceTest extends AbstractBaseTest {
     @SuppressWarnings("unchecked")
     public static ArrayList<PersistentProcessInstance> retrieveProcessInstances(DB db) { 
         ArrayList<PersistentProcessInstance> procInstInfoList = new ArrayList<PersistentProcessInstance>();
-        BTreeMap<ProcessKey, PersistentProcessInstance> map = db.treeMap("processInstance", 
-        		new ProcessInstanceKeySerializer(), new PersistentProcessInstanceSerializer()).createOrOpen();
+        BTreeMap<Long, PersistentProcessInstance> map = db.treeMap(new MapDBProcessInstance().getMapKey() + "ById", 
+        		Serializer.LONG, new PersistentProcessInstanceSerializer()).createOrOpen();
         Collection<PersistentProcessInstance> mdList = map.values();
         for( PersistentProcessInstance resultObject : mdList ) { 
             procInstInfoList.add(resultObject);

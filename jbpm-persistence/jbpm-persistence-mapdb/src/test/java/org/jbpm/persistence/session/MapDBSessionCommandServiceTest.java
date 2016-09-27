@@ -15,7 +15,7 @@
 
 package org.jbpm.persistence.session;
 
- import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
@@ -32,9 +32,9 @@ import javax.transaction.UserTransaction;
 import org.drools.compiler.builder.impl.KnowledgeBuilderImpl;
 import org.drools.core.SessionConfiguration;
 import org.drools.core.TimerJobFactoryType;
-import org.drools.core.command.runtime.AddEventListenerCommand;
 import org.drools.core.command.runtime.process.CompleteWorkItemCommand;
 import org.drools.core.command.runtime.process.GetProcessInstanceCommand;
+import org.drools.core.command.runtime.process.RegisterWorkItemHandlerCommand;
 import org.drools.core.command.runtime.process.StartProcessCommand;
 import org.drools.core.definitions.InternalKnowledgePackage;
 import org.drools.core.impl.InternalKnowledgeBase;
@@ -64,11 +64,6 @@ import org.jbpm.workflow.instance.node.SubProcessNodeInstance;
 import org.junit.After;
 import org.junit.Test;
 import org.kie.api.KieBase;
-import org.kie.api.event.process.DefaultProcessEventListener;
-import org.kie.api.event.process.ProcessCompletedEvent;
-import org.kie.api.event.process.ProcessNodeLeftEvent;
-import org.kie.api.event.process.ProcessNodeTriggeredEvent;
-import org.kie.api.event.process.ProcessStartedEvent;
 import org.kie.api.runtime.Environment;
 import org.kie.api.runtime.conf.TimerJobFactoryOption;
 import org.kie.api.runtime.process.NodeInstance;
@@ -79,7 +74,6 @@ import org.kie.internal.definition.KnowledgePackage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@org.junit.Ignore("NEXT: ignore for commit") 
 public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
     
     private static final Logger logger = LoggerFactory.getLogger(MapDBSessionCommandServiceTest.class);
@@ -118,10 +112,14 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
         		MapDBJDKTimerService.class.getName() );
         SessionConfiguration config = SessionConfiguration.newInstance( properties );
 
+        TestWorkItemHandler handler = TestWorkItemHandler.getInstance();
         MapDBSessionCommandService service = new MapDBSessionCommandService( kbase,
                                                                                config,
                                                                                env );
-        service.getKieSession().getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
+        RegisterWorkItemHandlerCommand regCommand = new RegisterWorkItemHandlerCommand();
+        regCommand.setWorkItemName( "MyWork" );
+        regCommand.setHandler( handler );
+        service.execute( regCommand );
         Long sessionId = service.getSessionId();
 
         StartProcessCommand startProcessCommand = new StartProcessCommand();
@@ -129,7 +127,6 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
         ProcessInstance processInstance = service.execute( startProcessCommand );
         logger.info( "Started process instance {}", processInstance.getId() );
 
-        TestWorkItemHandler handler = TestWorkItemHandler.getInstance();
         WorkItem workItem = handler.getWorkItem();
         assertNotNull( workItem );
         service.dispose();
@@ -138,6 +135,7 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
                                                    kbase,
                                                    config,
                                                    env );
+        service.execute( regCommand );
         GetProcessInstanceCommand getProcessInstanceCommand = new GetProcessInstanceCommand();
         getProcessInstanceCommand.setProcessInstanceId( processInstance.getId() );
         processInstance = service.execute( getProcessInstanceCommand );
@@ -148,7 +146,7 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
                                                    kbase,
                                                    config,
                                                    env );
-        service.getKieSession().getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
+        service.execute( regCommand );
         CompleteWorkItemCommand completeWorkItemCommand = new CompleteWorkItemCommand();
         completeWorkItemCommand.setWorkItemId( workItem.getId() );
         service.execute( completeWorkItemCommand );
@@ -161,7 +159,7 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
                                                    kbase,
                                                    config,
                                                    env );
-        service.getKieSession().getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
+        service.execute( regCommand );
         getProcessInstanceCommand = new GetProcessInstanceCommand();
         getProcessInstanceCommand.setProcessInstanceId( processInstance.getId() );
         processInstance = service.execute( getProcessInstanceCommand );
@@ -172,7 +170,7 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
                                                    kbase,
                                                    config,
                                                    env );
-        service.getKieSession().getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
+        service.execute( regCommand );
         completeWorkItemCommand = new CompleteWorkItemCommand();
         completeWorkItemCommand.setWorkItemId( workItem.getId() );
         service.execute( completeWorkItemCommand );
@@ -185,7 +183,7 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
                                                    kbase,
                                                    config,
                                                    env );
-        service.getKieSession().getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
+        service.execute( regCommand );
         getProcessInstanceCommand = new GetProcessInstanceCommand();
         getProcessInstanceCommand.setProcessInstanceId( processInstance.getId() );
         processInstance = service.execute( getProcessInstanceCommand );
@@ -196,7 +194,7 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
                                                    kbase,
                                                    config,
                                                    env );
-        service.getKieSession().getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
+        service.execute( regCommand );
         completeWorkItemCommand = new CompleteWorkItemCommand();
         completeWorkItemCommand.setWorkItemId( workItem.getId() );
         service.execute( completeWorkItemCommand );
@@ -209,7 +207,7 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
                                                    kbase,
                                                    config,
                                                    env );
-        service.getKieSession().getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
+        service.execute( regCommand );
         getProcessInstanceCommand = new GetProcessInstanceCommand();
         getProcessInstanceCommand.setProcessInstanceId( processInstance.getId() );
         processInstance = service.execute( getProcessInstanceCommand );
@@ -275,7 +273,10 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
                                                    kbase,
                                                    config,
                                                    env );
-        service.getKieSession().getWorkItemManager().registerWorkItemHandler("MyWork", handler);
+        RegisterWorkItemHandlerCommand regCommand = new RegisterWorkItemHandlerCommand();
+        regCommand.setWorkItemName( "MyWork" );
+        regCommand.setHandler( handler );
+        service.execute( regCommand );
         ut.begin();
         CompleteWorkItemCommand completeWorkItemCommand = new CompleteWorkItemCommand();
         completeWorkItemCommand.setWorkItemId( workItem.getId() );
@@ -290,7 +291,7 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
                                                    kbase,
                                                    config,
                                                    env );
-        service.getKieSession().getWorkItemManager().registerWorkItemHandler("MyWork", handler);
+        service.execute( regCommand );
         ut.begin();
         getProcessInstanceCommand = new GetProcessInstanceCommand();
         getProcessInstanceCommand.setProcessInstanceId( processInstance.getId() );
@@ -303,7 +304,7 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
                                                    kbase,
                                                    config,
                                                    env );
-        service.getKieSession().getWorkItemManager().registerWorkItemHandler("MyWork", handler);
+        service.execute( regCommand );
         ut.begin();
         completeWorkItemCommand = new CompleteWorkItemCommand();
         completeWorkItemCommand.setWorkItemId( workItem.getId() );
@@ -318,7 +319,7 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
                                                    kbase,
                                                    config,
                                                    env );
-        service.getKieSession().getWorkItemManager().registerWorkItemHandler("MyWork", handler);
+        service.execute( regCommand );
         ut.begin();
         getProcessInstanceCommand = new GetProcessInstanceCommand();
         getProcessInstanceCommand.setProcessInstanceId( processInstance.getId() );
@@ -331,7 +332,7 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
                                                    kbase,
                                                    config,
                                                    env );
-        service.getKieSession().getWorkItemManager().registerWorkItemHandler("MyWork", handler);
+        service.execute( regCommand );
         ut.begin();
         completeWorkItemCommand = new CompleteWorkItemCommand();
         completeWorkItemCommand.setWorkItemId( workItem.getId() );
@@ -346,7 +347,7 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
                                                    kbase,
                                                    config,
                                                    env );
-        service.getKieSession().getWorkItemManager().registerWorkItemHandler("MyWork", handler);
+        service.execute( regCommand );
         ut.begin();
         getProcessInstanceCommand = new GetProcessInstanceCommand();
         getProcessInstanceCommand.setProcessInstanceId( processInstance.getId() );
@@ -455,7 +456,10 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
         MapDBSessionCommandService service = new MapDBSessionCommandService( ruleBase,
                                                                                config,
                                                                                env );
-        service.getKieSession().getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
+        RegisterWorkItemHandlerCommand regCommand = new RegisterWorkItemHandlerCommand();
+        regCommand.setHandler(TestWorkItemHandler.getInstance());
+        regCommand.setWorkItemName("MyWork");
+        service.execute(regCommand);
         Long sessionId = service.getSessionId();
         StartProcessCommand startProcessCommand = new StartProcessCommand();
         startProcessCommand.setProcessId( "org.drools.test.TestProcess" );
@@ -472,7 +476,7 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
         		                                   ruleBase,
                                                    config,
                                                    env );
-        service.getKieSession().getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
+        service.execute(regCommand);
         GetProcessInstanceCommand getProcessInstanceCommand = new GetProcessInstanceCommand();
         getProcessInstanceCommand.setProcessInstanceId( processInstanceId );
         processInstance = (RuleFlowProcessInstance) service.execute( getProcessInstanceCommand );
@@ -492,7 +496,7 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
                                                    ruleBase,
                                                    config,
                                                    env );
-        service.getKieSession().getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
+        service.execute(regCommand);
         CompleteWorkItemCommand completeWorkItemCommand = new CompleteWorkItemCommand();
         completeWorkItemCommand.setWorkItemId( workItem.getId() );
         service.execute( completeWorkItemCommand );
@@ -502,7 +506,7 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
                                                    ruleBase,
                                                    config,
                                                    env );
-        service.getKieSession().getWorkItemManager().registerWorkItemHandler("MyWork", TestWorkItemHandler.getInstance());
+        service.execute(regCommand);
         getProcessInstanceCommand = new GetProcessInstanceCommand();
         getProcessInstanceCommand.setProcessInstanceId( subProcessInstanceId );
         subProcessInstance = (RuleFlowProcessInstance) service.execute( getProcessInstanceCommand );
@@ -778,6 +782,16 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
         start.setId( 1 );
         start.setName( "Start" );
         process.addNode( start );
+        ActionNode actionNode0 = new ActionNode();
+        actionNode0.setId( 4 );
+        actionNode0.setName("Action prev");
+        DroolsConsequenceAction action0 = new DroolsConsequenceAction();
+        action0.setDialect("java");;
+        action0.setConsequence("System.out.println(\"Started process!!\");");
+        actionNode0.setAction(action0);
+        process.addNode( actionNode0 );
+        new ConnectionImpl(start, Node.CONNECTION_DEFAULT_TYPE, 
+        		actionNode0, Node.CONNECTION_DEFAULT_TYPE);
         TimerNode timerNode = new TimerNode();
         timerNode.setId( 2 );
         timerNode.setName( "Timer" );
@@ -785,7 +799,7 @@ public class MapDBSessionCommandServiceTest extends AbstractBaseTest {
         timer.setDelay( "0" );
         timerNode.setTimer( timer );
         process.addNode( timerNode );
-        new ConnectionImpl( start, Node.CONNECTION_DEFAULT_TYPE,
+        new ConnectionImpl( actionNode0, Node.CONNECTION_DEFAULT_TYPE,
         		timerNode, Node.CONNECTION_DEFAULT_TYPE );
         ActionNode actionNode = new ActionNode();
         actionNode.setId( 3 );

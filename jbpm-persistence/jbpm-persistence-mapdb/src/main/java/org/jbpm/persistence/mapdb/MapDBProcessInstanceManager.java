@@ -63,8 +63,8 @@ public class MapDBProcessInstanceManager implements ProcessInstanceManager {
                 if ( processInstanceInfo == null ) {
                     return null;
                 }
-                processInstanceInfo.setProcessInstance(processInstanceInfo.getProcessInstance(kruntime, kruntime.getEnvironment(), readOnly));
                 TransactionManagerHelper.addToUpdatableSet(txm, processInstanceInfo);
+                processInstanceInfo.getProcessInstance(kruntime, kruntime.getEnvironment(), readOnly);
                 processInstanceInfo.updateLastReadDate();
   
             }
@@ -84,8 +84,8 @@ public class MapDBProcessInstanceManager implements ProcessInstanceManager {
         processInstance = (org.jbpm.process.instance.ProcessInstance)
         	processInstanceInfo.getProcessInstance(kruntime, this.kruntime.getEnvironment(), false);
         if (!readOnly) {
+        	TransactionManagerHelper.addToUpdatableSet(txm, processInstanceInfo);
             processInstanceInfo.updateLastReadDate();
-            TransactionManagerHelper.addToUpdatableSet(txm, processInstanceInfo);
         }
         if (((ProcessInstanceImpl) processInstance).getProcessXml() == null) {
 	        Process process = kruntime.getKieBase().getProcess( processInstance.getProcessId() );
@@ -130,7 +130,7 @@ public class MapDBProcessInstanceManager implements ProcessInstanceManager {
             = ((ProcessPersistenceContextManager) this.kruntime.getEnvironment()
                     .get( EnvironmentName.PERSISTENCE_CONTEXT_MANAGER ))
                     .getProcessPersistenceContext();
-
+        processInstanceInfo.transform();
         processInstanceInfo = (MapDBProcessInstance) context.persist( processInstanceInfo );
         ((org.jbpm.process.instance.ProcessInstance) processInstance).setId( processInstanceInfo.getId() );
         processInstanceInfo.updateLastReadDate();
