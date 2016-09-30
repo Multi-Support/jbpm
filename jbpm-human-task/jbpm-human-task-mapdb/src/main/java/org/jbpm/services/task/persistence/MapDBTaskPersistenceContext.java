@@ -1,0 +1,501 @@
+/*
+ * Copyright 2015 Red Hat, Inc. and/or its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+*/
+
+package org.jbpm.services.task.persistence;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.concurrent.ConcurrentNavigableMap;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
+
+import org.drools.persistence.TransactionManager;
+import org.jbpm.services.task.impl.model.AttachmentImpl;
+import org.jbpm.services.task.impl.model.CommentImpl;
+import org.jbpm.services.task.impl.model.ContentImpl;
+import org.jbpm.services.task.impl.model.DeadlineImpl;
+import org.jbpm.services.task.impl.model.TaskImpl;
+import org.jbpm.services.task.query.TaskSummaryImpl;
+import org.kie.api.task.UserGroupCallback;
+import org.kie.api.task.model.Attachment;
+import org.kie.api.task.model.Comment;
+import org.kie.api.task.model.Content;
+import org.kie.api.task.model.Group;
+import org.kie.api.task.model.OrganizationalEntity;
+import org.kie.api.task.model.Status;
+import org.kie.api.task.model.Task;
+import org.kie.api.task.model.TaskSummary;
+import org.kie.api.task.model.User;
+import org.kie.internal.task.api.TaskPersistenceContext;
+import org.kie.internal.task.api.model.Deadline;
+import org.kie.internal.task.api.model.InternalPeopleAssignments;
+import org.mapdb.BTreeMap;
+import org.mapdb.DB;
+import org.mapdb.DBException;
+import org.mapdb.Serializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
+
+    // logger set to public for test reasons, see the org.jbpm.services.task.TaskQueryBuilderLocalTest
+	public final static Logger logger = LoggerFactory.getLogger(MapDBTaskPersistenceContext.class);
+
+	protected DB db;
+	private TransactionManager txm;
+	private Map<Long, Task> taskCache = new HashMap<>();
+
+	private BTreeMap<TaskKey, Task> tasks;
+	private BTreeMap<Long, Content> contents;
+	private BTreeMap<Long, Comment> comments;
+	private BTreeMap<Long, Attachment> attachments;
+	private BTreeMap<Long, Deadline> deadlines;
+	private BTreeMap<String, OrganizationalEntity> orgEntities;
+
+	private AtomicLong nextId;
+
+	private UserGroupCallback callback;
+
+    // Interface methods ----------------------------------------------------------------------------------------------------------
+
+	public MapDBTaskPersistenceContext(DB db, TransactionManager txm, UserGroupCallback callback) {
+		this.db = db;
+		this.txm = txm;
+		this.callback = callback;
+		this.tasks = db.treeMap("task", 
+				new TaskKeySerializer(), 
+				new TaskSerializer()).createOrOpen();
+		this.orgEntities = db.treeMap("orgEntity", 
+				Serializer.STRING, 
+				new OrganizationalEntitySerializer()).createOrOpen();
+		this.contents = db.treeMap("contents",
+				Serializer.LONG,
+				new TaskContentSerializer()).createOrOpen();
+		this.comments = db.treeMap("comments",
+				Serializer.LONG,
+				new TaskCommentSerializer()).createOrOpen();
+		this.attachments = db.treeMap("attachments",
+				Serializer.LONG,
+				new TaskAttachmentSerializer()).createOrOpen();
+		this.deadlines = db.treeMap("deadlines",
+				Serializer.LONG,
+				new TaskDeadlineSerializer()).createOrOpen();
+		Long lastId = null;
+		try {
+			//lastId = this.mapById.lastKey() == null ? 0L : this.mapById.lastKey();
+			lastId = this.tasks.lastKey() == null ? 0L : this.tasks.lastKey().getTaskId();
+		} catch (NoSuchElementException | DBException.GetVoid t) { 
+			lastId = 0L;
+		}
+		if (lastId == null) {
+			lastId = 0L;
+		}
+		nextId = new AtomicLong(lastId + 1L);
+	}
+
+	@Override
+	public Task findTask(Long taskId) {
+		if (taskCache.containsKey(taskId)) {
+			return taskCache.get(taskId);
+		}
+		TaskKey key = new TaskKey(taskId);
+		Task task = this.tasks.get(key);
+		if (task != null) {
+			TaskTransactionHelper.addToUpdatableSet(txm, (MapDBElement) task);
+			taskCache.put(taskId, task);
+		}
+		return task;
+	}
+
+	@Override
+	public Task persistTask(Task task) {
+		if (task.getId() == null || task.getId() <= 0) {
+			((TaskImpl) task).setId(nextId.incrementAndGet());
+		}
+		if (task != null) {
+			TaskTransactionHelper.addToUpdatableSet(txm, (MapDBElement) task);
+		}
+		TaskKey key = new TaskKey(task);
+		this.tasks.put(key, task);
+        return task;
+	}
+
+	@Override
+	public Task updateTask(Task task) {
+		return persistTask(task);
+	}
+
+	@Override
+	public Task removeTask(Task task) {
+		this.tasks.remove(new TaskKey(task.getId()));
+		if (task != null) {
+			TaskTransactionHelper.removeFromUpdatableSet(txm, (MapDBElement) task);
+		}
+		return task;
+	}
+
+	@Override
+	public Group findGroup(String groupId) {
+		OrganizationalEntity value = orgEntities.getOrDefault("GROUP_" + groupId, null);
+		if (value instanceof Group) {
+			return (Group) value;
+		}
+		return null;
+	}
+
+	@Override
+	public Group persistGroup(Group group) {
+		orgEntities.put("GROUP_" + group.getId(), group);
+		return group;
+	}
+
+	@Override
+	public Group updateGroup(Group group) {
+		return persistGroup(group);
+	}
+
+	@Override
+	public Group removeGroup(Group group) {
+		orgEntities.remove("GROUP_" + group.getId());
+		return group;
+	}
+
+	@Override
+	public User findUser(String userId) {
+		OrganizationalEntity value = orgEntities.getOrDefault("USER_" + userId, null);
+		if (value instanceof User) {
+			return (User) value;
+		}
+		return null;
+	}
+
+	@Override
+	public User persistUser(User user) {
+		orgEntities.put("USER_" + user.getId(), user);
+        return user;
+	}
+
+	@Override
+	public User updateUser(User user) {
+		return persistUser(user);
+	}
+
+	@Override
+	public User removeUser(User user) {
+		orgEntities.remove("USER_" + user.getId());
+		return user;
+	}
+
+	@Override
+	public OrganizationalEntity findOrgEntity(String orgEntityId) {
+		OrganizationalEntity entity = findUser(orgEntityId);
+		if (entity == null) {
+			entity = findGroup(orgEntityId);
+		}
+		return entity;
+	}
+
+	@Override
+	public OrganizationalEntity persistOrgEntity(OrganizationalEntity orgEntity) {
+		if (orgEntity instanceof User) {
+			persistUser((User) orgEntity);
+		} else if (orgEntity instanceof Group) {
+			persistGroup((Group) orgEntity);
+		}
+        return orgEntity;
+	}
+
+	@Override
+	public OrganizationalEntity updateOrgEntity(OrganizationalEntity orgEntity) {
+		return persistOrgEntity(orgEntity);
+	}
+
+	@Override
+	public OrganizationalEntity removeOrgEntity(OrganizationalEntity orgEntity) {
+		if (orgEntity instanceof User) {
+			removeUser((User) orgEntity);
+		} else if (orgEntity instanceof Group) {
+			removeGroup((Group) orgEntity);
+		}
+		return orgEntity;
+	}
+
+	@Override
+	public Content findContent(Long contentId) {
+		return this.contents.getOrDefault(contentId, null);
+	}
+
+	@Override
+	public Content persistContent(Content content) {
+		if (content.getId() == null || content.getId() <= 0) {
+			((ContentImpl) content).setId(nextId.incrementAndGet());
+		}
+		this.contents.put(content.getId(), content);
+		return content;
+	}
+
+	@Override
+	public Content updateContent(Content content) {
+		return persistContent(content);
+	}
+
+	@Override
+	public Content removeContent(Content content) {
+		this.contents.remove(content.getId());
+		return content;
+	}
+
+	@Override
+	public Attachment findAttachment(Long attachmentId) {
+		return this.attachments.getOrDefault(attachmentId, null);
+	}
+
+	@Override
+	public Attachment persistAttachment(Attachment attachment) {
+		if (attachment.getId() == null || attachment.getId() <= 0) {
+			((AttachmentImpl) attachment).setId(nextId.incrementAndGet());
+		}
+		this.attachments.put(attachment.getId(), attachment);
+		return attachment;
+	}
+
+	@Override
+	public Attachment updateAttachment(Attachment attachment) {
+		return persistAttachment(attachment);
+	}
+
+	@Override
+	public Attachment removeAttachment(Attachment attachment) {
+		this.attachments.remove(attachment.getId());
+		return attachment;
+	}
+
+	@Override
+	public Comment findComment(Long commentId) {
+		return this.comments.getOrDefault(commentId, null);
+	}
+
+	@Override
+	public Comment persistComment(Comment comment) {
+		if (comment.getId() == null || comment.getId() <= 0) {
+			((CommentImpl) comment).setId(nextId.incrementAndGet());
+		}
+		this.comments.put(comment.getId(), comment);
+		return comment;
+	}
+
+	@Override
+	public Comment updateComment(Comment comment) {
+		return persistComment(comment);
+	}
+
+	@Override
+	public Comment removeComment(Comment comment) {
+		this.comments.remove(comment);
+		return comment;
+	}
+
+	@Override
+	public Deadline findDeadline(Long deadlineId) {
+		return this.deadlines.getOrDefault(deadlineId, null);
+	}
+
+	@Override
+	public Deadline persistDeadline(Deadline deadline) {
+		if (deadline.getId() <= 0) {
+			((DeadlineImpl) deadline).setId(nextId.incrementAndGet());
+		}
+		this.deadlines.put(deadline.getId(), deadline);
+		return deadline;
+	}
+
+	@Override
+	public Deadline updateDeadline(Deadline deadline) {
+		return persistDeadline(deadline);
+	}
+
+	@Override
+	public Deadline removeDeadline(Deadline deadline) {
+		this.deadlines.remove(deadline.getId());
+		return deadline;
+	}
+
+	@Override @SuppressWarnings("unchecked")
+	public <T> T queryWithParametersInTransaction(String queryName,
+			Map<String, Object> params, Class<T> clazz) {
+		System.out.println("queryWithParametersInTransaction: " + queryName);
+		if ("NewTasksAssignedAsPotentialOwner".equals(queryName)) {
+			final List<TaskSummary> retval = new ArrayList<TaskSummary>();
+			final List<Status> status = (List<Status>) params.get("status");
+			final String userId = (String) params.get("userId");
+			List<String> groupIds = callback.getGroupsForUser(userId, null, null);
+			List<String> userIdsList = new ArrayList<>();
+			for (String groupId : groupIds) {
+				userIdsList.add("potowners_" + groupId);
+			}
+			userIdsList.add("potowners_" + userId);
+			userIdsList.add("potowners_" + userId);
+			String[] userIds = userIdsList.toArray(new String[userIdsList.size()]);
+			ConcurrentNavigableMap<TaskKey, Task> subMap = this.tasks.subMap(
+					new TaskKey(Long.MIN_VALUE, status.toArray(new Status[status.size()]), userIds), 
+					new TaskKey(Long.MAX_VALUE, status.toArray(new Status[status.size()]), userIds));
+			subMap.forEach(new BiConsumer<TaskKey, Task>() {
+				@Override
+				public void accept(TaskKey key, Task task) {
+					TaskSummary ts = null;
+					List<OrganizationalEntity> exclOwners = ((InternalPeopleAssignments) task.getPeopleAssignments()).getExcludedOwners();
+					if (exclOwners == null) {
+						ts = new TaskSummaryImpl(task);
+					} else {
+						boolean excluded = false;
+						for (OrganizationalEntity entity : exclOwners) {
+							String id = entity.getId();
+							for (String ourId : userIdsList) {
+								if (ourId.endsWith(id)) {
+									excluded = true;
+									break;
+								}
+							}
+						}
+						if (!excluded) {
+							ts = new TaskSummaryImpl(task);
+						}
+					}
+					if (!status.contains(ts.getStatus())) {
+						ts = null;
+					}
+					if (ts != null) {
+						retval.add(ts);
+					}
+
+				}
+			});
+			return (T) retval;
+		} else {
+			throw new UnsupportedOperationException("Not implemented yet");//TODO
+		}
+	}
+
+        @Override
+	public <T> T queryWithParametersInTransaction(String queryName, boolean singleResult,
+			Map<String, Object> params, Class<T> clazz) {
+        	
+    		throw new UnsupportedOperationException("Not implemented yet");//TODO
+	}
+
+	@Override
+	public <T> T queryAndLockWithParametersInTransaction(String queryName,
+			Map<String, Object> params, boolean singleResult, Class<T> clazz) {
+		throw new UnsupportedOperationException("Not implemented yet");//TODO
+	}
+
+	@Override
+	public <T> T queryInTransaction(String queryName, Class<T> clazz) {
+		throw new UnsupportedOperationException("Not implemented yet");//TODO
+	}
+
+	@Override
+	public <T> T queryStringInTransaction(String queryString, Class<T> clazz) {
+		throw new UnsupportedOperationException("Not implemented yet");//TODO
+	}
+
+	@Override
+	public <T> T queryStringWithParametersInTransaction(String queryString,
+			Map<String, Object> params, Class<T> clazz) {
+		throw new UnsupportedOperationException("Not implemented yet");//TODO
+	}
+
+	@Override
+	public <T> T queryStringWithParametersInTransaction(String queryString, boolean singleResult,
+			Map<String, Object> params, Class<T> clazz) {
+		throw new UnsupportedOperationException("Not implemented yet");//TODO
+	}
+
+	@Override
+	public <T> T queryAndLockStringWithParametersInTransaction(
+			String queryName, Map<String, Object> params, boolean singleResult,
+			Class<T> clazz) {
+		throw new UnsupportedOperationException("Not implemented yet");//TODO
+	}
+
+	@Override
+	public int executeUpdateString(String updateString) {
+		throw new UnsupportedOperationException("Not implemented yet");//TODO
+	}
+
+	@Override
+	public HashMap<String, Object> addParametersToMap(Object... parameterValues) {
+		throw new UnsupportedOperationException("Not implemented yet");//TODO
+	}
+
+	@Override
+	public <T> T persist(T object) {
+		throw new UnsupportedOperationException("Not implemented yet");//TODO
+	}
+
+	@Override
+	public <T> T find(Class<T> entityClass, Object primaryKey) {
+		throw new UnsupportedOperationException("Not implemented yet");//TODO
+	}
+
+	@Override
+	public <T> T remove(T entity) {
+		throw new UnsupportedOperationException("Not implemented yet");//TODO
+	}
+
+	@Override
+	public <T> T merge(T entity) {
+		throw new UnsupportedOperationException("Not implemented yet");//TODO
+	}
+
+	@Override
+	public boolean isOpen() {
+		return !db.isClosed();
+	}
+
+	@Override
+	public void joinTransaction() {
+	}
+
+	@Override
+	public void close() {
+		taskCache.clear();
+	}
+
+    @Override
+    public Long findTaskIdByContentId( Long contentId ) {
+    	TaskKey fromKey = new TaskKey(Long.MIN_VALUE, contentId, null, null, null);
+    	TaskKey toKey = new TaskKey(Long.MAX_VALUE, contentId, null, null, null);
+    	ConcurrentNavigableMap<TaskKey, Task> subMap = tasks.subMap(fromKey, toKey);
+    	if (subMap.isEmpty()) {
+    		return null;
+    	} 
+    	return subMap.keySet().iterator().next().getTaskId();
+    }
+
+    @Override
+    public List<TaskSummary> doTaskSummaryCriteriaQuery(String userId, UserGroupCallback userGroupCallback, Object queryWhere) {
+		throw new UnsupportedOperationException("Not implemented yet");//TODO
+    }
+
+	public DB getDB() {
+		return db;
+	}
+
+}
+

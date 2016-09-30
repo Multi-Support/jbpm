@@ -100,6 +100,10 @@ public class MapDBProcessPersistenceContext  extends MapDBPersistenceContext
 			if (subMap.isEmpty()) {
 				return null;
 			}
+			if (subMap.size() > 1) {
+				throw new IllegalArgumentException("Shouldn't have more than one process instance for processId " + processId);
+			}
+
 			PersistentProcessInstance inst = subMap.values().iterator().next();
 			/*if (!mapById.containsKey(processId)) {
 				return null;
@@ -139,8 +143,8 @@ public class MapDBProcessPersistenceContext  extends MapDBPersistenceContext
 		}
 		return retval;*/
 		ConcurrentNavigableMap<ProcessKey, PersistentProcessInstance> subMap = map.subMap(
-				new ProcessKey(Long.MIN_VALUE, (String[]) null, null),
-				new ProcessKey(Long.MAX_VALUE, (String[]) null, null));
+				new ProcessKey(Long.MIN_VALUE, new String[] {type}, null),
+				new ProcessKey(Long.MAX_VALUE, new String[] {type}, null));
 		List<Long> retval = new ArrayList<>();
 		for (ProcessKey key : subMap.keySet()) {
 			retval.add(key.getProcessInstanceId());
@@ -162,6 +166,9 @@ public class MapDBProcessPersistenceContext  extends MapDBPersistenceContext
 				new ProcessKey(Long.MAX_VALUE, (String[]) null, correlationKey));
 		if (subMap.isEmpty()) {
 			return null;
+		}
+		if (subMap.size() > 1) {
+			throw new IllegalArgumentException("Shouldn't have more than one process instance for correlation key");
 		}
 		return subMap.keySet().iterator().next().getProcessInstanceId();
 	}

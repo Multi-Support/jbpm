@@ -30,7 +30,7 @@ public class MapDBProcessPersistenceUtil {
 	public static void cleanUp(Map<String, Object> context) {
 		DB db = (DB) context.get(DB_OBJECT);
 		db.close();
-		new File(MAPDB_FILE_NAME).delete();
+		//new File(MAPDB_FILE_NAME).delete();
 	}
 	
 	public static HashMap<String, Object> setupMapDB() {
@@ -44,7 +44,8 @@ public class MapDBProcessPersistenceUtil {
 	}
 
 	public static DB makeDB() {
-		return DBMaker.fileDB(MAPDB_FILE_NAME).transactionEnable().make();
+		//return DBMaker.fileDB(MAPDB_FILE_NAME).transactionEnable().make();
+		return DBMaker.memoryDB().transactionEnable().make();
 	}
 
 	public static Environment createEnvironment(Map<String, Object> context) {

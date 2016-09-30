@@ -17,8 +17,6 @@ public class PersistentProcessInstanceSerializer extends GroupSerializerObjectAr
 	public void serialize(DataOutput2 out, PersistentProcessInstance value) throws IOException {
 		MapDBProcessInstance inst = (MapDBProcessInstance) value;
 		out.writeLong(inst.getId());
-		System.err.println("WRITING state = " + inst.getState() + " FROM THIS THREAD");
-		printStackTrace();
 		out.writeInt(inst.getState());
 		Set<String> eventTypes = inst.getEventTypes() == null ? new HashSet<>() : inst.getEventTypes();
 		out.writeInt(eventTypes.size());
@@ -31,15 +29,6 @@ public class PersistentProcessInstanceSerializer extends GroupSerializerObjectAr
 		byte[] data = inst.getProcessInstanceByteArray() == null ? new byte[0] : inst.getProcessInstanceByteArray();
 		String base64data = new String(Base64.getEncoder().encode(data));
 		out.writeUTF(base64data);
-	}
-
-	private void printStackTrace() {
-		StackTraceElement[] trace = Thread.currentThread().getStackTrace();
-		for (StackTraceElement traceElement : trace) {
-			if (traceElement.getClassName().startsWith("org.jbpm.") || traceElement.getClassName().startsWith("org.drools.")) {
-				System.err.println("\tat " + traceElement);
-			}
-		}
 	}
 
 	@Override
