@@ -15,14 +15,9 @@
 
 package org.jbpm.services.task.persistence;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.concurrent.ConcurrentNavigableMap;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.BiConsumer;
 
 import org.drools.persistence.TransactionManager;
 import org.jbpm.services.task.impl.model.AttachmentImpl;
@@ -30,24 +25,28 @@ import org.jbpm.services.task.impl.model.CommentImpl;
 import org.jbpm.services.task.impl.model.ContentImpl;
 import org.jbpm.services.task.impl.model.DeadlineImpl;
 import org.jbpm.services.task.impl.model.TaskImpl;
-import org.jbpm.services.task.query.TaskSummaryImpl;
+import org.jbpm.services.task.persistence.index.TaskTableService;
+import org.jbpm.services.task.persistence.query.MapDBQuery;
+import org.jbpm.services.task.persistence.query.MapDBQueryRegistry;
 import org.kie.api.task.UserGroupCallback;
 import org.kie.api.task.model.Attachment;
 import org.kie.api.task.model.Comment;
 import org.kie.api.task.model.Content;
 import org.kie.api.task.model.Group;
 import org.kie.api.task.model.OrganizationalEntity;
-import org.kie.api.task.model.Status;
 import org.kie.api.task.model.Task;
 import org.kie.api.task.model.TaskSummary;
 import org.kie.api.task.model.User;
 import org.kie.internal.task.api.TaskPersistenceContext;
+import org.kie.internal.task.api.model.ContentData;
 import org.kie.internal.task.api.model.Deadline;
-import org.kie.internal.task.api.model.InternalPeopleAssignments;
+import org.kie.internal.task.api.model.FaultData;
+import org.kie.internal.task.api.model.InternalTaskData;
+import org.mapdb.Atomic;
 import org.mapdb.BTreeMap;
 import org.mapdb.DB;
-import org.mapdb.DBException;
 import org.mapdb.Serializer;
+import org.mapdb.serializer.SerializerLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,28 +56,31 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 	public final static Logger logger = LoggerFactory.getLogger(MapDBTaskPersistenceContext.class);
 
 	protected DB db;
+	protected TaskTableService tts;
 	private TransactionManager txm;
 	private Map<Long, Task> taskCache = new HashMap<>();
 
-	private BTreeMap<TaskKey, Task> tasks;
+	private BTreeMap<Long, Task> taskById;
 	private BTreeMap<Long, Content> contents;
 	private BTreeMap<Long, Comment> comments;
 	private BTreeMap<Long, Attachment> attachments;
 	private BTreeMap<Long, Deadline> deadlines;
 	private BTreeMap<String, OrganizationalEntity> orgEntities;
 
-	private AtomicLong nextId;
+	private Atomic.Long nextId;
 
 	private UserGroupCallback callback;
+
 
     // Interface methods ----------------------------------------------------------------------------------------------------------
 
 	public MapDBTaskPersistenceContext(DB db, TransactionManager txm, UserGroupCallback callback) {
 		this.db = db;
+		this.tts = new TaskTableService(db);
 		this.txm = txm;
 		this.callback = callback;
-		this.tasks = db.treeMap("task", 
-				new TaskKeySerializer(), 
+		this.taskById = db.treeMap("taskById", 
+				new SerializerLong(), 
 				new TaskSerializer()).createOrOpen();
 		this.orgEntities = db.treeMap("orgEntity", 
 				Serializer.STRING, 
@@ -95,17 +97,7 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 		this.deadlines = db.treeMap("deadlines",
 				Serializer.LONG,
 				new TaskDeadlineSerializer()).createOrOpen();
-		Long lastId = null;
-		try {
-			//lastId = this.mapById.lastKey() == null ? 0L : this.mapById.lastKey();
-			lastId = this.tasks.lastKey() == null ? 0L : this.tasks.lastKey().getTaskId();
-		} catch (NoSuchElementException | DBException.GetVoid t) { 
-			lastId = 0L;
-		}
-		if (lastId == null) {
-			lastId = 0L;
-		}
-		nextId = new AtomicLong(lastId + 1L);
+		nextId = db.atomicLong("taskId").createOrOpen();
 	}
 
 	@Override
@@ -113,8 +105,7 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 		if (taskCache.containsKey(taskId)) {
 			return taskCache.get(taskId);
 		}
-		TaskKey key = new TaskKey(taskId);
-		Task task = this.tasks.get(key);
+		Task task = tts.getById().get(taskId);
 		if (task != null) {
 			TaskTransactionHelper.addToUpdatableSet(txm, (MapDBElement) task);
 			taskCache.put(taskId, task);
@@ -124,14 +115,15 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 
 	@Override
 	public Task persistTask(Task task) {
-		if (task.getId() == null || task.getId() <= 0) {
-			((TaskImpl) task).setId(nextId.incrementAndGet());
-		}
 		if (task != null) {
+			if (task.getId() == null || task.getId() <= 0) {
+				((TaskImpl) task).setId(nextId.incrementAndGet());
+			}
 			TaskTransactionHelper.addToUpdatableSet(txm, (MapDBElement) task);
 		}
-		TaskKey key = new TaskKey(task);
-		this.tasks.put(key, task);
+		tts.update(task);
+		/*TaskKey key = new TaskKey(task);
+		this.tasks.put(key, task);*/
         return task;
 	}
 
@@ -142,7 +134,7 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 
 	@Override
 	public Task removeTask(Task task) {
-		this.tasks.remove(new TaskKey(task.getId()));
+		tts.remove(task.getId());
 		if (task != null) {
 			TaskTransactionHelper.removeFromUpdatableSet(txm, (MapDBElement) task);
 		}
@@ -261,6 +253,41 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 	}
 
 	@Override
+	public Task setDocumentToTask(Content content, ContentData contentData,
+			Task task) {
+		Long id = 0L;
+		if (content != null) {
+			id = content.getId();
+		}
+		((InternalTaskData) task.getTaskData()).setDocument(id, contentData);
+		TaskTransactionHelper.addToUpdatableSet(txm, (MapDBElement) task);
+		return task;
+	}
+	
+	@Override
+	public Task setFaultToTask(Content content, FaultData faultData, Task task) {
+		Long id = 0L;
+		if (content != null) {
+			id = content.getId();
+		}
+		((InternalTaskData) task.getTaskData()).setFault(id, faultData);
+		TaskTransactionHelper.addToUpdatableSet(txm, (MapDBElement) task);
+		return task;
+	}
+	
+	@Override
+	public Task setOutputToTask(Content content, ContentData contentData,
+			Task task) {
+		Long id = 0L;
+		if (content != null) {
+			id = content.getId();
+		}
+		((InternalTaskData) task.getTaskData()).setOutput(id, contentData);
+		TaskTransactionHelper.addToUpdatableSet(txm, (MapDBElement) task);
+		return task;	
+	}
+	
+	@Override
 	public Attachment findAttachment(Long attachmentId) {
 		return this.attachments.getOrDefault(attachmentId, null);
 	}
@@ -339,69 +366,28 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 	public <T> T queryWithParametersInTransaction(String queryName,
 			Map<String, Object> params, Class<T> clazz) {
 		System.out.println("queryWithParametersInTransaction: " + queryName);
-		if ("NewTasksAssignedAsPotentialOwner".equals(queryName)) {
-			final List<TaskSummary> retval = new ArrayList<TaskSummary>();
-			final List<Status> status = (List<Status>) params.get("status");
-			final String userId = (String) params.get("userId");
-			List<String> groupIds = callback.getGroupsForUser(userId, null, null);
-			List<String> userIdsList = new ArrayList<>();
-			for (String groupId : groupIds) {
-				userIdsList.add("potowners_" + groupId);
-			}
-			userIdsList.add("potowners_" + userId);
-			userIdsList.add("potowners_" + userId);
-			String[] userIds = userIdsList.toArray(new String[userIdsList.size()]);
-			ConcurrentNavigableMap<TaskKey, Task> subMap = this.tasks.subMap(
-					new TaskKey(Long.MIN_VALUE, status.toArray(new Status[status.size()]), userIds), 
-					new TaskKey(Long.MAX_VALUE, status.toArray(new Status[status.size()]), userIds));
-			subMap.forEach(new BiConsumer<TaskKey, Task>() {
-				@Override
-				public void accept(TaskKey key, Task task) {
-					TaskSummary ts = null;
-					List<OrganizationalEntity> exclOwners = ((InternalPeopleAssignments) task.getPeopleAssignments()).getExcludedOwners();
-					if (exclOwners == null) {
-						ts = new TaskSummaryImpl(task);
-					} else {
-						boolean excluded = false;
-						for (OrganizationalEntity entity : exclOwners) {
-							String id = entity.getId();
-							for (String ourId : userIdsList) {
-								if (ourId.endsWith(id)) {
-									excluded = true;
-									break;
-								}
-							}
-						}
-						if (!excluded) {
-							ts = new TaskSummaryImpl(task);
-						}
-					}
-					if (!status.contains(ts.getStatus())) {
-						ts = null;
-					}
-					if (ts != null) {
-						retval.add(ts);
-					}
-
-				}
-			});
-			return (T) retval;
-		} else {
-			throw new UnsupportedOperationException("Not implemented yet");//TODO
+		MapDBQuery<?> query = MapDBQueryRegistry.getInstance().getQuery(queryName);
+		if (query == null) {
+			throw new UnsupportedOperationException("Not implemented yet: " + queryName);
 		}
+		return (T) query.execute(callback, params, tts, false);
 	}
 
-        @Override
+    @Override  @SuppressWarnings("unchecked")
 	public <T> T queryWithParametersInTransaction(String queryName, boolean singleResult,
 			Map<String, Object> params, Class<T> clazz) {
-        	
-    		throw new UnsupportedOperationException("Not implemented yet");//TODO
+    	System.out.println("queryWithParametersInTransaction: " + queryName);
+    	MapDBQuery<?> query = MapDBQueryRegistry.getInstance().getQuery(queryName);
+    	if (query == null) {
+    		throw new UnsupportedOperationException("Not implemented yet: " + queryName);
+    	}
+    	return (T) query.execute(callback, params, tts, singleResult);
 	}
 
 	@Override
 	public <T> T queryAndLockWithParametersInTransaction(String queryName,
 			Map<String, Object> params, boolean singleResult, Class<T> clazz) {
-		throw new UnsupportedOperationException("Not implemented yet");//TODO
+		return queryWithParametersInTransaction(queryName, singleResult, params, clazz);
 	}
 
 	@Override
@@ -479,13 +465,14 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 
     @Override
     public Long findTaskIdByContentId( Long contentId ) {
-    	TaskKey fromKey = new TaskKey(Long.MIN_VALUE, contentId, null, null, null);
-    	TaskKey toKey = new TaskKey(Long.MAX_VALUE, contentId, null, null, null);
-    	ConcurrentNavigableMap<TaskKey, Task> subMap = tasks.subMap(fromKey, toKey);
-    	if (subMap.isEmpty()) {
-    		return null;
-    	} 
-    	return subMap.keySet().iterator().next().getTaskId();
+    	long[] values = tts.getByContentId().get(contentId);
+    	if (values != null) {
+    		Task t = taskById.get(values[0]);
+    		if (t != null) {
+    			return t.getId();
+    		}
+    	}
+    	return null;
     }
 
     @Override

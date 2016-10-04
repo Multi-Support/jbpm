@@ -5,7 +5,6 @@ import static org.kie.api.runtime.EnvironmentName.GLOBALS;
 import static org.kie.api.runtime.EnvironmentName.TRANSACTION;
 import static org.kie.api.runtime.EnvironmentName.TRANSACTION_MANAGER;
 
-import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -16,7 +15,6 @@ import org.drools.core.impl.EnvironmentFactory;
 import org.drools.persistence.mapdb.KnowledgeStoreServiceImpl;
 import org.kie.api.runtime.Environment;
 import org.kie.internal.process.CorrelationKeyFactory;
-import org.kie.internal.utils.ServiceRegistry;
 import org.kie.internal.utils.ServiceRegistryImpl;
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
@@ -30,7 +28,7 @@ public class MapDBProcessPersistenceUtil {
 	public static void cleanUp(Map<String, Object> context) {
 		DB db = (DB) context.get(DB_OBJECT);
 		db.close();
-		//new File(MAPDB_FILE_NAME).delete();
+//		new File(MAPDB_FILE_NAME).delete();
 	}
 	
 	public static HashMap<String, Object> setupMapDB() {
@@ -44,8 +42,16 @@ public class MapDBProcessPersistenceUtil {
 	}
 
 	public static DB makeDB() {
-		//return DBMaker.fileDB(MAPDB_FILE_NAME).transactionEnable().make();
-		return DBMaker.memoryDB().transactionEnable().make();
+		DB db = DBMaker.memoryDB().
+				concurrencyScale(64).
+				transactionEnable().
+				make();
+		/*DB db = DBMaker.fileDB(MAPDB_FILE_NAME).
+				cleanerHackEnable().
+				concurrencyScale(512).
+				transactionEnable().
+				make();*/
+		return db;
 	}
 
 	public static Environment createEnvironment(Map<String, Object> context) {

@@ -23,20 +23,16 @@ import java.util.Collections;
 import java.util.List;
 
 import org.jbpm.services.task.persistence.MapDBElement;
-import org.jbpm.services.task.persistence.TaskKey;
-import org.jbpm.services.task.persistence.TaskKeySerializer;
-import org.jbpm.services.task.persistence.TaskSerializer;
+import org.jbpm.services.task.persistence.index.TaskTableService;
 import org.jbpm.services.task.utils.CollectionUtils;
 import org.kie.api.task.model.Content;
 import org.kie.api.task.model.I18NText;
 import org.kie.api.task.model.PeopleAssignments;
-import org.kie.api.task.model.Task;
 import org.kie.api.task.model.TaskData;
 import org.kie.internal.task.api.model.Deadlines;
 import org.kie.internal.task.api.model.Delegation;
 import org.kie.internal.task.api.model.InternalTask;
 import org.kie.internal.task.api.model.SubTasksStrategy;
-import org.mapdb.BTreeMap;
 import org.mapdb.DB;
 
 public class TaskImpl implements InternalTask, MapDBElement {
@@ -377,10 +373,7 @@ public class TaskImpl implements InternalTask, MapDBElement {
 
 	@Override
 	public void updateOnMap(DB db) {
-		BTreeMap<TaskKey, Task> tmap = db.treeMap("task", 
-				new TaskKeySerializer(), 
-				new TaskSerializer()).open();
-		tmap.put(new TaskKey(this), this);
+		new TaskTableService(db).update(this);
 	}
 
 }

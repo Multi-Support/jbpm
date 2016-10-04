@@ -65,7 +65,11 @@ import org.kie.api.task.model.Task;
 import org.kie.api.task.model.TaskSummary;
 import org.kie.api.task.model.User;
 import org.kie.internal.task.api.TaskPersistenceContext;
+import org.kie.internal.task.api.model.ContentData;
 import org.kie.internal.task.api.model.Deadline;
+import org.kie.internal.task.api.model.FaultData;
+import org.kie.internal.task.api.model.InternalContent;
+import org.kie.internal.task.api.model.InternalTaskData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -289,6 +293,37 @@ public class JPATaskPersistenceContext implements TaskPersistenceContext {
 		check();
 		em.remove( content );
 		return content;
+	}
+	
+	@Override
+	public Task setDocumentToTask(Content content, ContentData contentData, Task task) {
+		Long id = 0L;
+		if (content != null) {
+			id = content.getId();
+		}
+		((InternalTaskData) task.getTaskData()).setDocument(id, contentData);
+		return task;
+	}
+	
+	@Override
+	public Task setFaultToTask(Content content, FaultData faultData, Task task) {
+		Long id = 0L;
+		if (content != null) {
+			id = content.getId();
+		}
+		((InternalTaskData) task.getTaskData()).setFault(id, faultData);
+		return task;
+	}
+	
+	@Override
+	public Task setOutputToTask(Content content, ContentData contentData,
+			Task task) {
+		Long id = 0L;
+		if (content != null) {
+			id = content.getId();
+		}
+		((InternalTaskData) task.getTaskData()).setOutput(id, contentData);
+		return task;
 	}
 
 	@Override

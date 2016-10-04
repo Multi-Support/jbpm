@@ -53,10 +53,10 @@ public class TaskKeySerializer extends GroupSerializerObjectArray<TaskKey> {
 		return new TaskKey(taskId, contentId, attachmentId, commentId, deadlineId);
 	}
 
-	@Override
+	/*@Override
 	public int compare(TaskKey o1, TaskKey o2) {
 		return o1.compareTo(o2);
-	}
+	}*/
 
 	@Override
 	public TaskKey nextValue(TaskKey value) {

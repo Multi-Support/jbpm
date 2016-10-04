@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentNavigableMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.drools.persistence.TransactionManager;
 import org.drools.persistence.TransactionManagerHelper;
@@ -14,6 +13,7 @@ import org.jbpm.persistence.PersistentCorrelationKey;
 import org.jbpm.persistence.PersistentProcessInstance;
 import org.jbpm.persistence.ProcessPersistenceContext;
 import org.kie.internal.process.CorrelationKey;
+import org.mapdb.Atomic;
 import org.mapdb.BTreeMap;
 import org.mapdb.DB;
 import org.mapdb.DBException;
@@ -21,7 +21,7 @@ import org.mapdb.DBException;
 public class MapDBProcessPersistenceContext  extends MapDBPersistenceContext
 	implements ProcessPersistenceContext{
 
-	private final AtomicLong nextId;
+	private final Atomic.Long nextId;
 	//private final BTreeMap<String, long[]> mapByEventTypes;
 	//private final BTreeMap<Long, PersistentProcessInstance> mapById;
 	//private final BTreeMap<PersistentCorrelationKey, Long> mapByCK;
@@ -47,7 +47,7 @@ public class MapDBProcessPersistenceContext  extends MapDBPersistenceContext
 		if (lastId == null) {
 			lastId = 0L;
 		}
-		nextId = new AtomicLong(lastId + 1L);
+		nextId = db.atomicLong("processId").createOrOpen();
 	}
 	
 	@Override

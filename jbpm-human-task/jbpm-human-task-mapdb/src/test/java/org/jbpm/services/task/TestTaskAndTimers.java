@@ -3,13 +3,11 @@ package org.jbpm.services.task;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.drools.persistence.mapdb.KnowledgeStoreServiceImpl;
-import org.drools.persistence.mapdb.MapDBEnvironmentName;
 import org.jbpm.persistence.mapdb.util.MapDBProcessPersistenceUtil;
 import org.jbpm.services.task.commands.TaskCommandExecutorImpl;
 import org.jbpm.services.task.events.TaskEventSupport;
@@ -36,9 +34,7 @@ import org.kie.api.task.TaskService;
 import org.kie.api.task.UserGroupCallback;
 import org.kie.api.task.model.TaskSummary;
 import org.kie.internal.io.ResourceFactory;
-import org.mapdb.DB;
 
-//CHECKSTYLE:OFF
 public class TestTaskAndTimers {
 
 	private HashMap<String, Object> context;
@@ -59,24 +55,21 @@ public class TestTaskAndTimers {
         KieServices ks = KieServices.Factory.get();
         Assert.assertNotNull(new KnowledgeStoreServiceImpl()); //make sure services are loaded
         KieBase kbase = createKieBase(ks);
-        DB db = (DB) context.get(MapDBEnvironmentName.DB_OBJECT);
         Properties userGroups = new Properties();
         userGroups.setProperty("mary", "g1");
         userGroups.setProperty("john", "g2");
         userGroups.setProperty("Administrator", "Administrators");
         userGroups.setProperty("mariano", "urn:multiarchive:group:ALL");
         JBossUserGroupCallbackImpl callback = new JBossUserGroupCallbackImpl(userGroups);
-        processRun(kbase, "mariano", db, callback); 
+        processRun(kbase, "mariano", callback); 
     }
     
-    @Test @org.junit.Ignore("For now it is not working properly in multiple threads")
+    @Test
     public void testPersistenceTasksConcurrent() throws Exception {
     	KieServices ks = KieServices.Factory.get();
         Assert.assertNotNull(new KnowledgeStoreServiceImpl()); //make sure services are loaded
         final KieBase kbase = createKieBase(ks);
-        Map<String, Object> context = MapDBProcessPersistenceUtil.setupMapDB();
-        DB db = (DB) context.get(MapDBEnvironmentName.DB_OBJECT);
-        int size = 5; //test up to 500  
+        int size = 100;  
         Properties userGroups = new Properties();
         userGroups.setProperty("mary", "g1");
         userGroups.setProperty("john", "g2");
@@ -94,7 +87,7 @@ public class TestTaskAndTimers {
                     public void run() {
                         try {
                             String userId = "user" + index.get();
-                            processRun(kbase, userId, db, callback);
+                            processRun(kbase, userId, callback);
                         } catch (Throwable e) {
                             e.printStackTrace();
                             errors.add(e);
@@ -125,8 +118,7 @@ public class TestTaskAndTimers {
     	return kc.getKieBase();
 	}
 
-	private void processRun(KieBase kbase, String userId, DB db, 
-			UserGroupCallback callback) {
+	private void processRun(KieBase kbase, String userId, UserGroupCallback callback) {
         Environment env = MapDBProcessPersistenceUtil.createEnvironment(context);
         env.set(EnvironmentName.TASK_USER_GROUP_CALLBACK, callback);
         KieSession ksession = KieServices.Factory.get().getStoreServices().

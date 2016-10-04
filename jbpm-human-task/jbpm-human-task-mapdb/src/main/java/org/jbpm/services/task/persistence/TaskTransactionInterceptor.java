@@ -249,6 +249,7 @@ public class TaskTransactionInterceptor extends AbstractInterceptor {
 			this.service = service;
 		}
 
+		@Override
 		public void afterCompletion(int status) {
 			MapDBTaskPersistenceContext context = (MapDBTaskPersistenceContext) 
 					this.service.tpm.getPersistenceContext();
@@ -260,6 +261,7 @@ public class TaskTransactionInterceptor extends AbstractInterceptor {
 			this.service.tpm.endCommandScopedEntityManager();
 		}
 
+		@Override
 		public void beforeCompletion() {
 			MapDBTaskPersistenceContext context = (MapDBTaskPersistenceContext) 
 					this.service.tpm.getPersistenceContext();
