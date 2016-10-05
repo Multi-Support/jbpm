@@ -3,7 +3,6 @@ package org.jbpm.persistence.mapdb;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentNavigableMap;
 
 import org.drools.persistence.TransactionManager;
@@ -16,7 +15,6 @@ import org.kie.internal.process.CorrelationKey;
 import org.mapdb.Atomic;
 import org.mapdb.BTreeMap;
 import org.mapdb.DB;
-import org.mapdb.DBException;
 
 public class MapDBProcessPersistenceContext  extends MapDBPersistenceContext
 	implements ProcessPersistenceContext{
@@ -37,16 +35,6 @@ public class MapDBProcessPersistenceContext  extends MapDBPersistenceContext
 		this.mapByCK = db.treeMap(keyPrefix + "ByCK", 
 				new PersistentCorrelationKeySerializer(), Serializer.LONG).createOrOpen();*/
 		this.map = db.treeMap(keyPrefix, new ProcessInstanceKeySerializer(), new PersistentProcessInstanceSerializer()).createOrOpen();
-		Long lastId = null;
-		try {
-			//lastId = this.mapById.lastKey() == null ? 0L : this.mapById.lastKey();
-			lastId = this.map.lastKey() == null ? 0L : this.map.lastKey().getProcessInstanceId();
-		} catch (NoSuchElementException | DBException.GetVoid t) { 
-			lastId = 0L;
-		}
-		if (lastId == null) {
-			lastId = 0L;
-		}
 		nextId = db.atomicLong("processId").createOrOpen();
 	}
 	
