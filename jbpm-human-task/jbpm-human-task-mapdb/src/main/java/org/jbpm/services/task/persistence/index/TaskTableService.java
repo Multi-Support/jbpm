@@ -2,39 +2,39 @@ package org.jbpm.services.task.persistence.index;
 
 import java.util.Arrays;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
+import org.jbpm.services.task.persistence.TaskSerializer;
 import org.kie.api.task.model.OrganizationalEntity;
 import org.kie.api.task.model.Task;
 import org.kie.internal.task.api.model.InternalPeopleAssignments;
 import org.mapdb.DB;
+import org.mapdb.HTreeMap;
+import org.mapdb.Serializer;
 
 public class TaskTableService {
 
-//	private BTreeMap<String, long[]> byStatus;
-//	private BTreeMap<String, long[]> byActualOwner;
-//	private BTreeMap<String, long[]> byPotentialOwner;
-//	private BTreeMap<String, long[]> byExclOwner;
-//	private BTreeMap<String, long[]> byBizAdmin;
-//	private BTreeMap<Long, Task> byId;
-//	private BTreeMap<Long, long[]> byContentId;
-	private static final ConcurrentHashMap<String, long[]> byStatus = new ConcurrentHashMap<>();
-	private static final ConcurrentHashMap<String, long[]> byActualOwner = new ConcurrentHashMap<>();
-	private static final ConcurrentHashMap<String, long[]> byPotentialOwner = new ConcurrentHashMap<>();
-	private static final ConcurrentHashMap<String, long[]> byExclOwner = new ConcurrentHashMap<>();
-	private static final ConcurrentHashMap<String, long[]> byBizAdmin = new ConcurrentHashMap<>();
-	private static final ConcurrentHashMap<Long, Task> byId = new ConcurrentHashMap<>();
-	private static final ConcurrentHashMap<Long, long[]> byContentId = new ConcurrentHashMap<>();
+	private static HTreeMap<String, long[]> byStatus = null;
+	private static HTreeMap<String, long[]> byActualOwner = null;
+	private static HTreeMap<String, long[]> byPotentialOwner = null;
+	private static HTreeMap<String, long[]> byExclOwner = null;
+	private static HTreeMap<String, long[]> byBizAdmin = null;
+	private static HTreeMap<Long, long[]> byContentId = null;
+	private static HTreeMap<Long, Task> byId = null;
 	
+	private static synchronized void init(DB db) {
+		if (byId == null || byId.isClosed()) {
+			byStatus = db.hashMap("taskByStatus", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
+			byActualOwner = db.hashMap("taskByStatus", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
+			byPotentialOwner = db.hashMap("taskByPotOwner", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
+			byExclOwner = db.hashMap("taskByExclOwner", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
+			byBizAdmin = db.hashMap("taskByBizAdmin", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
+			byId = db.hashMap("taskById", Serializer.LONG, new TaskSerializer()).createOrOpen();
+			byContentId = db.hashMap("taskByContentId", Serializer.LONG, Serializer.LONG_ARRAY).createOrOpen();
+		}
+	}
 
 	public TaskTableService(DB db) {
-//		this.byStatus = db.treeMap("taskByStatus", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
-//		this.byActualOwner = db.treeMap("taskByStatus", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
-//		this.byPotentialOwner = db.treeMap("taskByPotOwner", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
-//		this.byExclOwner = db.treeMap("taskByExclOwner", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
-//		this.byBizAdmin = db.treeMap("taskByBizAdmin", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
-//		this.byId = db.treeMap("taskById", new SerializerLong(), new TaskSerializer()).createOrOpen();
-//		this.byContentId = db.treeMap("taskByContentId", new SerializerLong(), Serializer.LONG_ARRAY).createOrOpen();
+		init(db);
 	}
 	
 	public void update(Task task) {
@@ -66,7 +66,7 @@ public class TaskTableService {
 		}
 	}
 
-	private <T> void updateEntry(T key, Map<T, long[]> map, Long taskId) {
+	private <T> void updateEntry(T key, HTreeMap<T, long[]> map, Long taskId) {
 		long[] values = map.get(key);
 		if (values == null) {
 			values = new long[1];
@@ -82,27 +82,27 @@ public class TaskTableService {
 			byId.remove(taskId);
 			for (Object stat : byStatus.keySet()) {
 				String status = (String) stat;
-				byStatus.put(status, removeId(taskId, byStatus.get(status)));
+				byStatus.replace(status, removeId(taskId, byStatus.get(status)));
 			}
 			for (Object ow : byActualOwner.keySet()) {
 				String ownerId = (String) ow;
-				byActualOwner.put(ownerId, removeId(taskId, byActualOwner.get(ownerId)));
+				byActualOwner.replace(ownerId, removeId(taskId, byActualOwner.get(ownerId)));
 			}
 			for (Object oid : byPotentialOwner.keySet()) {
 				String id = (String) oid;
-				byPotentialOwner.put(id, removeId(taskId, byPotentialOwner.get(id)));
+				byPotentialOwner.replace(id, removeId(taskId, byPotentialOwner.get(id)));
 			}
 			for (Object oid : byExclOwner.keySet()) {
 				String id = (String) oid;
-				byExclOwner.put(id, removeId(taskId, byExclOwner.get(id)));
+				byExclOwner.replace(id, removeId(taskId, byExclOwner.get(id)));
 			}
 			for (Object oid : byBizAdmin.keySet()) {
 				String id = (String) oid;
-				byBizAdmin.put(id, removeId(taskId, byBizAdmin.get(id)));
+				byBizAdmin.replace(id, removeId(taskId, byBizAdmin.get(id)));
 			}
 			for (Object oid : byContentId.keySet()) {
 				Long id = (Long) oid;
-				byContentId.put(id, removeId(taskId, byContentId.get(id)));
+				byContentId.replace(id, removeId(taskId, byContentId.get(id)));
 			}
 		}
 	}

@@ -69,7 +69,7 @@ public class TestTaskAndTimers {
     	KieServices ks = KieServices.Factory.get();
         Assert.assertNotNull(new KnowledgeStoreServiceImpl()); //make sure services are loaded
         final KieBase kbase = createKieBase(ks);
-        int size = 100;  
+        int size = 30;  
         Properties userGroups = new Properties();
         userGroups.setProperty("mary", "g1");
         userGroups.setProperty("john", "g2");
@@ -153,7 +153,7 @@ public class TestTaskAndTimers {
 
         try {
             System.out.println("WAITING FOR TIMER!");
-            Thread.sleep(6 * 1000);
+            Thread.sleep(6_000);
             System.out.println("DONE WAITING!");
         } catch (InterruptedException e) {  }
         

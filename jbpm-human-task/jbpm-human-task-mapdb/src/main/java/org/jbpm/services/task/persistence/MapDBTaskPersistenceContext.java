@@ -45,6 +45,7 @@ import org.kie.internal.task.api.model.InternalTaskData;
 import org.mapdb.Atomic;
 import org.mapdb.BTreeMap;
 import org.mapdb.DB;
+import org.mapdb.HTreeMap;
 import org.mapdb.Serializer;
 import org.mapdb.serializer.SerializerLong;
 import org.slf4j.Logger;
@@ -60,7 +61,7 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 	private TransactionManager txm;
 	private Map<Long, Task> taskCache = new HashMap<>();
 
-	private BTreeMap<Long, Task> taskById;
+	private HTreeMap<Long, Task> taskById;
 	private BTreeMap<Long, Content> contents;
 	private BTreeMap<Long, Comment> comments;
 	private BTreeMap<Long, Attachment> attachments;
@@ -79,7 +80,7 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 		this.tts = new TaskTableService(db);
 		this.txm = txm;
 		this.callback = callback;
-		this.taskById = db.treeMap("taskById", 
+		this.taskById = db.hashMap("taskById", 
 				new SerializerLong(), 
 				new TaskSerializer()).createOrOpen();
 		this.orgEntities = db.treeMap("orgEntity", 
