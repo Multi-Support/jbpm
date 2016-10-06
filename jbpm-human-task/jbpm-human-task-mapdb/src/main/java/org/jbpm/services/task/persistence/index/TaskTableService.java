@@ -163,4 +163,13 @@ public class TaskTableService {
 	public void remove(Long taskId) {
 		clearMappings(taskId);
 	}
+
+	public void addTaskContentRelation(Task task, long contentId) {
+		updateEntry(contentId, byContentId, task.getId());
+	}
+
+	public void removeTaskContentRelation(Task task, long contentId) {
+		long[] original = byContentId.get(contentId);
+		byContentId.put(contentId, removeId(task.getId(), original));
+	}
 }

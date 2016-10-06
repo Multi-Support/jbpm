@@ -358,6 +358,17 @@ public class JPATaskPersistenceContext implements TaskPersistenceContext {
 		em.remove( attachment );
 		return attachment;
 	}
+	
+	@Override
+	public Attachment removeAttachmentFromTask(Task task, long attachmentId) {
+		return ((InternalTaskData) task.getTaskData()).removeAttachment(attachmentId);
+	}
+	
+	@Override
+	public Attachment addAttachmentToTask(Attachment attachment, Task task) {
+		((InternalTaskData) task.getTaskData()).addAttachment(attachment);
+		return attachment;
+	}
 
 	@Override
 	public Comment findComment(Long commentId) {
@@ -389,6 +400,18 @@ public class JPATaskPersistenceContext implements TaskPersistenceContext {
 	public Comment removeComment(Comment comment) {
 		check();
 		em.remove( comment );
+		return comment;
+	}
+	
+	@Override
+	public Comment removeCommentFromTask(Comment comment, Task task) {
+		((InternalTaskData) task.getTaskData()).removeComment(comment.getId());
+		return comment;
+	}
+	
+	@Override
+	public Comment addCommentToTask(Comment comment, Task task) {
+		((InternalTaskData) task.getTaskData()).addComment(comment);
 		return comment;
 	}
 

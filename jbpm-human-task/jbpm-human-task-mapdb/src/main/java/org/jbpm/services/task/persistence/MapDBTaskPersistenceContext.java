@@ -312,6 +312,20 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 		this.attachments.remove(attachment.getId());
 		return attachment;
 	}
+	
+	@Override
+	public Attachment addAttachmentToTask(Attachment attachment, Task task) {
+		((InternalTaskData) task.getTaskData()).addAttachment(attachment);
+		tts.addTaskContentRelation(task, attachment.getAttachmentContentId());
+		return attachment;
+	}
+	
+	@Override
+	public Attachment removeAttachmentFromTask(Task task, long attachmentId) {
+		Attachment attachment = ((InternalTaskData) task.getTaskData()).removeAttachment(attachmentId);
+		tts.removeTaskContentRelation(task, attachment.getAttachmentContentId());
+		return attachment;
+	}
 
 	@Override
 	public Comment findComment(Long commentId) {
@@ -335,6 +349,18 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 	@Override
 	public Comment removeComment(Comment comment) {
 		this.comments.remove(comment);
+		return comment;
+	}
+	
+	@Override
+	public Comment addCommentToTask(Comment comment, Task task) {
+		((InternalTaskData) task.getTaskData()).addComment(comment);
+		return comment;
+	}
+	
+	@Override
+	public Comment removeCommentFromTask(Comment comment, Task task) {
+		((InternalTaskData) task.getTaskData()).removeComment(comment.getId());
 		return comment;
 	}
 
