@@ -1,0 +1,33 @@
+package org.jbpm.services.task.persistence.query;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import org.jbpm.services.task.persistence.index.TaskTableService;
+import org.jbpm.services.task.query.TaskSummaryImpl;
+import org.kie.api.task.UserGroupCallback;
+import org.kie.api.task.model.Task;
+import org.kie.api.task.model.TaskSummary;
+
+public class TaskSummariesByIdsQuery implements MapDBQuery<List<TaskSummary>> {
+
+	@Override
+	public List<TaskSummary> execute(UserGroupCallback callback,
+			Map<String, Object> params, TaskTableService tts,
+			boolean singleResult) {
+		@SuppressWarnings("unchecked")
+		List<Long> taskIds = (List<Long>) params.get("taskIds");
+		List<TaskSummary> retval = new ArrayList<>();
+		if (taskIds != null) {
+			for (Long taskId : taskIds) {
+				Task task = tts.getById().get(taskId);
+				if (task != null) {
+					retval.add(new TaskSummaryImpl(task));
+				}
+			}
+		}
+		return retval;
+	}
+
+}

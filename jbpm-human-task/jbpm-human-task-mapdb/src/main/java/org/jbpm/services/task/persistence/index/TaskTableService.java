@@ -16,9 +16,13 @@ public class TaskTableService {
 	private static HTreeMap<String, long[]> byStatus = null;
 	private static HTreeMap<String, long[]> byActualOwner = null;
 	private static HTreeMap<String, long[]> byPotentialOwner = null;
+	private static HTreeMap<String, long[]> byRecipient = null;
+	private static HTreeMap<String, long[]> byStakeholder = null;
+	private static HTreeMap<String, long[]> byInitiator = null;
 	private static HTreeMap<String, long[]> byExclOwner = null;
 	private static HTreeMap<String, long[]> byBizAdmin = null;
 	private static HTreeMap<Long, long[]> byContentId = null;
+	private static HTreeMap<Long, long[]> byProcessInstanceId = null;
 	private static HTreeMap<Long, Task> byId = null;
 	
 	private static synchronized void init(DB db) {
@@ -26,10 +30,14 @@ public class TaskTableService {
 			byStatus = db.hashMap("taskByStatus", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
 			byActualOwner = db.hashMap("taskByStatus", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
 			byPotentialOwner = db.hashMap("taskByPotOwner", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
+			byRecipient = db.hashMap("taskByRecipient", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
+			byStakeholder = db.hashMap("taskByStakeholder", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
+			byInitiator = db.hashMap("taskByInitiator", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
 			byExclOwner = db.hashMap("taskByExclOwner", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
 			byBizAdmin = db.hashMap("taskByBizAdmin", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
 			byId = db.hashMap("taskById", Serializer.LONG, new TaskSerializer()).createOrOpen();
 			byContentId = db.hashMap("taskByContentId", Serializer.LONG, Serializer.LONG_ARRAY).createOrOpen();
+			byProcessInstanceId = db.hashMap("byProcessInstanceId", Serializer.LONG, Serializer.LONG_ARRAY).createOrOpen();
 		}
 	}
 
@@ -43,6 +51,9 @@ public class TaskTableService {
 		byId.put(task.getId(), task);
 		String status = task.getTaskData().getStatus().name();
 		updateEntry(status, byStatus, taskId);
+		if (task.getPeopleAssignments().getTaskInitiator() != null) {
+			updateEntry(task.getPeopleAssignments().getTaskInitiator().getId(), byInitiator, taskId);
+		}
 		if (task.getTaskData().getActualOwner() != null) {
 			updateEntry(task.getTaskData().getActualOwner().getId(), byActualOwner, taskId);
 		}
@@ -55,6 +66,12 @@ public class TaskTableService {
 		for (OrganizationalEntity entity : task.getPeopleAssignments().getBusinessAdministrators()) {
 			updateEntry(entity.getId(), byBizAdmin, taskId);
 		}
+		for (OrganizationalEntity entity : ((InternalPeopleAssignments) task.getPeopleAssignments()).getRecipients()) {
+			updateEntry(entity.getId(), byRecipient, taskId);
+		}
+		for (OrganizationalEntity entity : ((InternalPeopleAssignments) task.getPeopleAssignments()).getTaskStakeholders()) {
+			updateEntry(entity.getId(), byStakeholder, taskId);
+		}
 		if (task.getTaskData().getDocumentContentId() >= 0) {
 			updateEntry(task.getTaskData().getDocumentContentId(), byContentId, taskId);
 		}
@@ -63,6 +80,9 @@ public class TaskTableService {
 		}
 		if (task.getTaskData().getOutputContentId() >= 0) {
 			updateEntry(task.getTaskData().getOutputContentId(), byContentId, taskId);
+		}
+		if (task.getTaskData().getProcessInstanceId() >= 0) {
+			updateEntry(task.getTaskData().getProcessInstanceId(), byProcessInstanceId, taskId);
 		}
 	}
 
@@ -88,6 +108,10 @@ public class TaskTableService {
 				String ownerId = (String) ow;
 				byActualOwner.replace(ownerId, removeId(taskId, byActualOwner.get(ownerId)));
 			}
+			for (Object ow : byRecipient.keySet()) {
+				String ownerId = (String) ow;
+				byRecipient.replace(ownerId, removeId(taskId, byRecipient.get(ownerId)));
+			}
 			for (Object oid : byPotentialOwner.keySet()) {
 				String id = (String) oid;
 				byPotentialOwner.replace(id, removeId(taskId, byPotentialOwner.get(id)));
@@ -96,13 +120,25 @@ public class TaskTableService {
 				String id = (String) oid;
 				byExclOwner.replace(id, removeId(taskId, byExclOwner.get(id)));
 			}
+			for (Object oid : byStakeholder.keySet()) {
+				String id = (String) oid;
+				byStakeholder.replace(id, removeId(taskId, byStakeholder.get(id)));
+			}
 			for (Object oid : byBizAdmin.keySet()) {
 				String id = (String) oid;
 				byBizAdmin.replace(id, removeId(taskId, byBizAdmin.get(id)));
 			}
+			for (Object oid : byInitiator.keySet()) {
+				String id = (String) oid;
+				byInitiator.replace(id, removeId(taskId, byInitiator.get(id)));
+			}
 			for (Object oid : byContentId.keySet()) {
 				Long id = (Long) oid;
 				byContentId.replace(id, removeId(taskId, byContentId.get(id)));
+			}
+			for (Object oid : byProcessInstanceId.keySet()) {
+				Long id = (Long) oid;
+				byProcessInstanceId.replace(id, removeId(taskId, byProcessInstanceId.get(id)));
 			}
 		}
 	}
@@ -160,10 +196,26 @@ public class TaskTableService {
 		return byContentId;
 	}
 
+	public Map<Long, long[]> getByProcessInstanceId() {
+		return byProcessInstanceId;
+	}
+	
+	public Map<String, long[]> getByRecipient() {
+		return byRecipient;
+	}
+
+	public Map<String, long[]> getByStakeholder() {
+		return byStakeholder;
+	}
+
+	public Map<String, long[]> getByInitiator() {
+		return byInitiator;
+	}
+	
 	public void remove(Long taskId) {
 		clearMappings(taskId);
 	}
-
+	
 	public void addTaskContentRelation(Task task, long contentId) {
 		updateEntry(contentId, byContentId, task.getId());
 	}

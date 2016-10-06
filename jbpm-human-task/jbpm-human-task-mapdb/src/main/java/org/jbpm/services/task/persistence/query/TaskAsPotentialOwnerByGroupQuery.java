@@ -14,39 +14,18 @@ import org.kie.api.task.model.Status;
 import org.kie.api.task.model.Task;
 import org.kie.api.task.model.TaskSummary;
 
-public class TaskAsPotentialOwnerQuery implements MapDBQuery<List<TaskSummary>> {
+public class TaskAsPotentialOwnerByGroupQuery implements MapDBQuery<List<TaskSummary>> {
 
 	@Override
 	public List<TaskSummary> execute(UserGroupCallback callback, 
 			Map<String, Object> params, TaskTableService tts, boolean singleResult) {
-		@SuppressWarnings("unchecked")
-		List<Status> status = (List<Status>) params.get("status");
-		if (status == null || status.isEmpty()) {
-			status = Arrays.asList(Status.Created, Status.Ready, Status.Reserved, 
+		List<Status> status = Arrays.asList(Status.Created, Status.Ready, Status.Reserved, 
 					Status.InProgress, Status.Suspended);
-		}
-		final String userId = (String) params.get("userId");
-		@SuppressWarnings("unchecked")
-		List<String> groupIds = (List<String>) params.get("groupIds");
-		if (groupIds == null || groupIds.isEmpty()) {
-			groupIds = callback.getGroupsForUser(userId, null, null);
-		}
+		String groupId = (String) params.get("groupId");
 		
 		Set<Long> values = new HashSet<>();
-		addAll(values, tts.getByActualOwner().get(userId));
-		addAll(values, tts.getByBizAdmin().get(userId));
-		for (String groupId : groupIds) {
-			addAll(values, tts.getByBizAdmin().get(groupId));
-			addAll(values, tts.getByPotentialOwner().get(groupId));
-		}
-		long[] exclOwnerTasks = tts.getByExclOwner().get(userId);
-		if (exclOwnerTasks != null) {
-			for (long taskId : exclOwnerTasks) {
-				if (values.contains(taskId)) {
-					values.remove(taskId);
-				}
-			}
-		}
+		addAll(values, tts.getByPotentialOwner().get(groupId));
+		removeAll(values, tts.getByActualOwner().get(groupId));
 
 		Set<Long> valuesByStatus = new HashSet<>();
 		if (status != null) {
@@ -71,6 +50,16 @@ public class TaskAsPotentialOwnerQuery implements MapDBQuery<List<TaskSummary>> 
 		if (v != null) {
 			for (long value : v) {
 				values.add(value);
+			}
+		}
+	}
+
+	private void removeAll(Set<Long> values, long[] v) {
+		if (v != null) {
+			for (long value : v) {
+				if (values.contains(value)) {
+					values.remove(value);
+				}
 			}
 		}
 	}

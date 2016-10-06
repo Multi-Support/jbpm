@@ -1,7 +1,7 @@
 package org.jbpm.services.task.persistence.query;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -14,39 +14,19 @@ import org.kie.api.task.model.Status;
 import org.kie.api.task.model.Task;
 import org.kie.api.task.model.TaskSummary;
 
-public class TaskAsPotentialOwnerQuery implements MapDBQuery<List<TaskSummary>> {
+public class TOWPSBEDBSDQuery implements MapDBQuery<List<TaskSummary>> {
 
 	@Override
-	public List<TaskSummary> execute(UserGroupCallback callback, 
-			Map<String, Object> params, TaskTableService tts, boolean singleResult) {
-		@SuppressWarnings("unchecked")
+	public List<TaskSummary> execute(UserGroupCallback callback,
+			Map<String, Object> params, TaskTableService tts,
+			boolean singleResult) {
+		Date date = (Date) params.get("date");
 		List<Status> status = (List<Status>) params.get("status");
-		if (status == null || status.isEmpty()) {
-			status = Arrays.asList(Status.Created, Status.Ready, Status.Reserved, 
-					Status.InProgress, Status.Suspended);
-		}
-		final String userId = (String) params.get("userId");
-		@SuppressWarnings("unchecked")
-		List<String> groupIds = (List<String>) params.get("groupIds");
-		if (groupIds == null || groupIds.isEmpty()) {
-			groupIds = callback.getGroupsForUser(userId, null, null);
-		}
-		
+		String userId = (String) params.get("userId");
+	
 		Set<Long> values = new HashSet<>();
 		addAll(values, tts.getByActualOwner().get(userId));
-		addAll(values, tts.getByBizAdmin().get(userId));
-		for (String groupId : groupIds) {
-			addAll(values, tts.getByBizAdmin().get(groupId));
-			addAll(values, tts.getByPotentialOwner().get(groupId));
-		}
-		long[] exclOwnerTasks = tts.getByExclOwner().get(userId);
-		if (exclOwnerTasks != null) {
-			for (long taskId : exclOwnerTasks) {
-				if (values.contains(taskId)) {
-					values.remove(taskId);
-				}
-			}
-		}
+		addAll(values, tts.getByPotentialOwner().get(userId));
 
 		Set<Long> valuesByStatus = new HashSet<>();
 		if (status != null) {
@@ -54,17 +34,22 @@ public class TaskAsPotentialOwnerQuery implements MapDBQuery<List<TaskSummary>> 
 				addAll(valuesByStatus, tts.getByStatus().get(stat.name()));
 			}
 		}
-		
+	
 		values.retainAll(valuesByStatus); //and operation
-		
+	
 		final List<TaskSummary> retval = new ArrayList<TaskSummary>();
 		for (Long taskId : values) {
 			Task task = tts.getById().get(taskId);
-			if (task != null) {
+			if (task != null && matchesCondition(date, task)) {
 				retval.add(new TaskSummaryImpl(task));
 			}
 		}
 		return retval;
+	}
+
+	private boolean matchesCondition(Date date, Task task) {
+		Date expTime = task.getTaskData().getExpirationTime();
+		return date != null && date.before(expTime);
 	}
 
 	private void addAll(Set<Long> values, long[] v) {
@@ -74,5 +59,4 @@ public class TaskAsPotentialOwnerQuery implements MapDBQuery<List<TaskSummary>> 
 			}
 		}
 	}
-
 }
