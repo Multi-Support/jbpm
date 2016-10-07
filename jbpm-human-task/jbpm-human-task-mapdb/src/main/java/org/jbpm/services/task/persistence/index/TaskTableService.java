@@ -6,7 +6,9 @@ import java.util.Map;
 import org.jbpm.services.task.persistence.TaskSerializer;
 import org.kie.api.task.model.OrganizationalEntity;
 import org.kie.api.task.model.Task;
+import org.kie.internal.task.api.model.Deadline;
 import org.kie.internal.task.api.model.InternalPeopleAssignments;
+import org.kie.internal.task.api.model.InternalTask;
 import org.mapdb.DB;
 import org.mapdb.HTreeMap;
 import org.mapdb.Serializer;
@@ -23,6 +25,9 @@ public class TaskTableService {
 	private static HTreeMap<String, long[]> byBizAdmin = null;
 	private static HTreeMap<Long, long[]> byContentId = null;
 	private static HTreeMap<Long, long[]> byProcessInstanceId = null;
+	private static HTreeMap<Long, long[]> byWorkItemId = null;
+	private static HTreeMap<Long, long[]> byParentId = null;
+	private static HTreeMap<Long, long[]> byDeadlineId = null;
 	private static HTreeMap<Long, Task> byId = null;
 	
 	private static synchronized void init(DB db) {
@@ -36,6 +41,9 @@ public class TaskTableService {
 			byExclOwner = db.hashMap("taskByExclOwner", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
 			byBizAdmin = db.hashMap("taskByBizAdmin", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
 			byId = db.hashMap("taskById", Serializer.LONG, new TaskSerializer()).createOrOpen();
+			byParentId = db.hashMap("taskByParentId", Serializer.LONG, Serializer.LONG_ARRAY).createOrOpen();
+			byWorkItemId = db.hashMap("taskByWorkItemId", Serializer.LONG, Serializer.LONG_ARRAY).createOrOpen();
+			byDeadlineId = db.hashMap("taskByWorkItemId", Serializer.LONG, Serializer.LONG_ARRAY).createOrOpen();
 			byContentId = db.hashMap("taskByContentId", Serializer.LONG, Serializer.LONG_ARRAY).createOrOpen();
 			byProcessInstanceId = db.hashMap("byProcessInstanceId", Serializer.LONG, Serializer.LONG_ARRAY).createOrOpen();
 		}
@@ -53,6 +61,24 @@ public class TaskTableService {
 		updateEntry(status, byStatus, taskId);
 		if (task.getPeopleAssignments().getTaskInitiator() != null) {
 			updateEntry(task.getPeopleAssignments().getTaskInitiator().getId(), byInitiator, taskId);
+		}
+		
+		if (((InternalTask) task).getDeadlines().getStartDeadlines() != null) {
+			for (Deadline dl : ((InternalTask) task).getDeadlines().getStartDeadlines()) {
+				updateEntry(dl.getId(), byDeadlineId, taskId);
+			}
+		}
+		if (((InternalTask) task).getDeadlines().getEndDeadlines() != null) {
+			for (Deadline dl : ((InternalTask) task).getDeadlines().getEndDeadlines()) {
+				updateEntry(dl.getId(), byDeadlineId, taskId);
+			}
+		}
+		
+		if (task.getTaskData().getParentId() >= 0) {
+			updateEntry(task.getTaskData().getParentId(), byParentId, taskId);
+		}
+		if (task.getTaskData().getWorkItemId() >= 0) {
+			updateEntry(task.getTaskData().getWorkItemId(), byWorkItemId, taskId);
 		}
 		if (task.getTaskData().getActualOwner() != null) {
 			updateEntry(task.getTaskData().getActualOwner().getId(), byActualOwner, taskId);
@@ -99,7 +125,7 @@ public class TaskTableService {
 
 	private void clearMappings(Long taskId) {
 		synchronized (byId) {
-			byId.remove(taskId);
+			Task task = byId.remove(taskId);
 			for (Object stat : byStatus.keySet()) {
 				String status = (String) stat;
 				byStatus.replace(status, removeId(taskId, byStatus.get(status)));
@@ -139,6 +165,20 @@ public class TaskTableService {
 			for (Object oid : byProcessInstanceId.keySet()) {
 				Long id = (Long) oid;
 				byProcessInstanceId.replace(id, removeId(taskId, byProcessInstanceId.get(id)));
+			}
+			if (task != null) {
+				Long workItemId = task.getTaskData().getWorkItemId();
+				if (workItemId >= 0) {
+					byWorkItemId.replace(workItemId, new long[0]);
+				}
+				Long parentId = task.getTaskData().getParentId();
+				if (parentId >= 0) {
+					byParentId.replace(parentId, new long[0]);
+				}
+			}
+			for (Object oid : byDeadlineId.keySet()) {
+				Long id = (Long) oid;
+				byDeadlineId.replace(id, removeId(taskId, byDeadlineId.get(id)));
 			}
 		}
 	}
@@ -211,7 +251,19 @@ public class TaskTableService {
 	public Map<String, long[]> getByInitiator() {
 		return byInitiator;
 	}
-	
+
+	public Map<Long, long[]> getByWorkItemId() {
+		return byWorkItemId;
+	}
+
+	public Map<Long, long[]> getByParentId() {
+		return byParentId;
+	}
+
+	public Map<Long, long[]> getByDeadlineId() {
+		return byDeadlineId;
+	}
+
 	public void remove(Long taskId) {
 		clearMappings(taskId);
 	}

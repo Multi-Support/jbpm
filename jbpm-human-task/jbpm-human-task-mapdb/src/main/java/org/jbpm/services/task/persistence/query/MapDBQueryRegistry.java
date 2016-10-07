@@ -21,6 +21,7 @@ public class MapDBQueryRegistry {
         registry.put("TasksByStatus", new TasksByStatusQuery());
         registry.put("TasksByStatusByProcessId", new TasksByStatusAndProcessInstanceIdQuery());
         registry.put("TasksByStatusByProcessIdByTaskName", new TasksByStatusAndProcessInstanceIdQuery());
+        registry.put("TasksByProcessInstanceId", new TaskIdByProcessIdQuery());
         registry.put("TasksByStatusSince", new TasksByStatusQuery());
         registry.put("TasksAssignedAsExcludedOwner", new TaskAsExcludedOwnerQuery());
         registry.put("TasksAssignedAsPotentialOwner", new TaskAsPotentialOwnerQuery());
@@ -41,6 +42,18 @@ public class MapDBQueryRegistry {
         registry.put("GetAllTasks", new AllTasksQuery());
         registry.put("NewTasksAssignedAsPotentialOwner", new TaskAsPotentialOwnerQuery());
 		registry.put("ArchivedTasks", new EmptyTaskQuery()); //we don't archive for now
+		registry.put("TasksOwnedPotentialOwnersByTaskIds", new TaskOwnedPotentialOwnersByTaskIdsQuery());
+		registry.put("TasksAssignedAsBusinessAdministratorByStatus", new TasksByBizAdminStatusQuery());
+		registry.put("GetPotentialOwnersForTaskIds", new PotentialOwnersForTaskIdsQuery());
+		registry.put("QuickTasksAssignedAsPotentialOwnerWithGroupsByStatus", new TasksAsPotentialOwnerByGroupsWithExclusionQuery());
+		registry.put("TaskByWorkItemId", new TasksByWorkItemIdQuery());
+		registry.put("GetSubTasksByParentTaskId", new SubTasksByParentTaskIdQuery());
+		registry.put("SubTasksAssignedAsPotentialOwner", new SubTasksByPotentialOwnerQuery());
+		registry.put("UnescalatedEndDeadlinesByTaskIdForReminder", new UnescalatedDeadlinesByTaskIdQuery(true));
+        registry.put("UnescalatedStartDeadlinesByTaskIdForReminder", new UnescalatedDeadlinesByTaskIdQuery(false));
+        registry.put("UnescalatedEndDeadlines", new UnescalatedDeadlinesQuery(true));
+        registry.put("UnescalatedStartDeadlines", new UnescalatedDeadlinesQuery(false));
+		
         registry.put("getAllAdminAuditTasksByUser", null);//TODO
         registry.put("getAllAuditTasks", null);//TODO
         registry.put("getAllAuditTasksByStatus", null);//TODO
@@ -49,19 +62,7 @@ public class MapDBQueryRegistry {
         registry.put("getAllGroupAuditTasksByUser", null);//TODO
         registry.put("getAllTasksEventsByProcessInstanceId", null);//TODO
         registry.put("getAllTasksEvents", null);//TODO
-        registry.put("GetPotentialOwnersForTaskIds", null);//TODO
-        registry.put("TasksOwnedPotentialOwnersByTaskIds", null);//TODO
-        registry.put("TasksByStatusByProcessId", null);//TODO
-        registry.put("TasksByProcessInstanceId", null);//TODO
-        registry.put("SubTasksAssignedAsPotentialOwner", null);//TODO
-        registry.put("GetSubTasksByParentTaskId", null);//TODO
-        registry.put("TaskByWorkItemId", null);//TODO
-        registry.put("QuickTasksAssignedAsPotentialOwnerWithGroupsByStatus", null);//TODO
-        registry.put("TasksAssignedAsBusinessAdministratorByStatus", null);//TODO
-        registry.put("UnescalatedEndDeadlinesByTaskIdForReminder", null);//TODO
-        registry.put("UnescalatedStartDeadlinesByTaskIdForReminder", null);//TODO
-        registry.put("UnescalatedStartDeadlines", null);//TODO
-        registry.put("UnescalatedEndDeadlines", null);//TODO
+        
 	}
 
 	public MapDBQuery<?> getQuery(String queryName) {
