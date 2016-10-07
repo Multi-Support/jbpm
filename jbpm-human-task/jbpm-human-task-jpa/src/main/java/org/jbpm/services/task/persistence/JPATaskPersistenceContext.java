@@ -537,6 +537,17 @@ public class JPATaskPersistenceContext implements TaskPersistenceContext {
 		return query.executeUpdate();
 	}
 
+	@Override
+	public int executeUpdate(String queryName, Map<String, Object> params) {
+		check();
+		Query query = this.em.createNamedQuery(queryName);
+		if (params != null) {
+			for (Map.Entry<String, Object> paramEntry : params.entrySet()) {
+				query.setParameter(paramEntry.getKey(), paramEntry.getValue());
+			}
+		}
+		return query.executeUpdate();
+	}
 
 
 	@Override

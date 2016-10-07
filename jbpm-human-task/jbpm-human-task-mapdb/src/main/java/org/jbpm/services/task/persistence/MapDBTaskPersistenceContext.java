@@ -448,6 +448,11 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 
 	@Override
 	public int executeUpdateString(String updateString) {
+		throw new UnsupportedOperationException("Not supported by MapDB");
+	}
+	
+	@Override
+	public int executeUpdate(String queryName, Map<String, Object> params) {
 		throw new UnsupportedOperationException("Not implemented yet");//TODO
 	}
 
