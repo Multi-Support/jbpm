@@ -29,31 +29,23 @@ from TaskImpl t, OrganizationalEntityImpl potentialOwners where
 		Long parentId = (Long) params.get("parentId");
 		List<Status> status = Arrays.asList(Status.Created, Status.Ready, 
 				Status.Reserved, Status.InProgress, Status.Suspended);
-		long[] v = tts.getByParentId().get(parentId);
 		Set<Long> values = new HashSet<>();
-		if (v != null) {
-			for (long value : v) {
-				values.add(value);
-			}
-		}
+		MapDBQueryUtil.addAll(values, tts.getByParentId(), parentId);
 
 		Set<Long> idsByStatus = new HashSet<>();
 		for (Status s : status) {
-			long[] ids = tts.getByStatus().get(s.name());
-			if (ids != null) {
-				for (long id : ids) {
-					idsByStatus.add(id);
-				}
-			}
+			MapDBQueryUtil.addAll(idsByStatus, tts.getByStatus(), s.name());
 		}
 
 		values.retainAll(idsByStatus);
 		
 		List<TaskSummary> retval = new ArrayList<>(values.size());
 		for (Long id : values) {
-			Task task = tts.getById().get(id);
-			if (task != null) {
-				retval.add(new TaskSummaryImpl(task));
+			if (tts.getById().containsKey(id)) {
+				Task task = tts.getById().get(id);
+				if (task != null) {
+					retval.add(new TaskSummaryImpl(task));
+				}
 			}
 		}
 		return retval;

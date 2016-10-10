@@ -24,21 +24,11 @@ public class TasksByStatusAndProcessInstanceIdQuery implements MapDBQuery<List<T
 		Long processInstanceId = (Long) params.get("processInstanceId");
 		String taskName = (String) params.get("taskName");
 		Set<Long> idsByProcess = new HashSet<>();
-		long[] ids = tts.getByProcessInstanceId().get(processInstanceId);
-		if (ids != null) {
-			for (long id : ids) {
-				idsByProcess.add(id);
-			}
-		}
+		MapDBQueryUtil.addAll(idsByProcess, tts.getByProcessInstanceId(), processInstanceId);
 		
 		Set<Long> idsByStatus = new HashSet<>();
 		for (Status s : status) {
-			ids = tts.getByStatus().get(s.name());
-			if (ids != null) {
-				for (long id : ids) {
-					idsByStatus.add(id);
-				}
-			}
+			MapDBQueryUtil.addAll(idsByStatus, tts.getByStatus(), s.name());
 		}
 		
 		idsByProcess.retainAll(idsByStatus);
@@ -59,5 +49,4 @@ public class TasksByStatusAndProcessInstanceIdQuery implements MapDBQuery<List<T
 		}
 		return true;
 	}
-
 }

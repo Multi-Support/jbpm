@@ -16,7 +16,6 @@
 package org.jbpm.services.task.persistence;
 
 import java.lang.reflect.Constructor;
-import java.util.Collection;
 import java.util.Set;
 
 import javax.transaction.Status;
@@ -38,8 +37,6 @@ import org.kie.internal.command.World;
 import org.kie.internal.task.api.TaskContext;
 import org.kie.internal.task.api.TaskPersistenceContext;
 import org.kie.internal.task.api.TaskPersistenceContextManager;
-import org.kie.internal.task.api.model.InternalPeopleAssignments;
-import org.kie.internal.task.api.model.InternalTask;
 import org.kie.internal.task.exception.TaskException;
 import org.mapdb.DB;
 import org.slf4j.Logger;
@@ -53,10 +50,8 @@ public class TaskTransactionInterceptor extends AbstractInterceptor {
 	private CommandService             commandService;
     private TransactionManager         txm;
     private TaskPersistenceContextManager  tpm;
-    private boolean eagerDisabled = false;
     
     public TaskTransactionInterceptor(Environment environment) {
-    	this.eagerDisabled = Boolean.getBoolean("jbpm.ht.eager.disabled");
     	initTransactionManager(environment);
     }
 	
@@ -69,11 +64,8 @@ public class TaskTransactionInterceptor extends AbstractInterceptor {
             transactionOwner = txm.begin();
             tpm.beginCommandScopedEntityManager();
             TransactionManagerHelper.registerTransactionSyncInContainer(this.txm, new TaskSynchronizationImpl( this ));
-                
             result = executeNext((Command<T>) command);
-            postInit(result);
             txm.commit( transactionOwner );
-
             return result;
 
         } catch (TaskException e) {
@@ -215,28 +207,6 @@ public class TaskTransactionInterceptor extends AbstractInterceptor {
             return isSpringTransactionManager(clazz.getSuperclass());
         }
         return false;
-    }
-    
-    private void postInit(Object result) {
-    	if (result instanceof Task) {
-    		Task task = (Task) result;
-    		if (task != null && !eagerDisabled) {
-    			task.getNames().size();
-    			task.getDescriptions().size();
-    			task.getSubjects().size();
-    			task.getPeopleAssignments().getBusinessAdministrators().size();
-    			task.getPeopleAssignments().getPotentialOwners().size();
-    			((InternalPeopleAssignments) task.getPeopleAssignments()).getRecipients().size();
-    			((InternalPeopleAssignments) task.getPeopleAssignments()).getExcludedOwners().size();
-    			((InternalPeopleAssignments) task.getPeopleAssignments()).getTaskStakeholders().size();
-    			task.getTaskData().getAttachments().size();
-    			task.getTaskData().getComments().size();
-    			((InternalTask)task).getDeadlines().getStartDeadlines().size();
-    			((InternalTask)task).getDeadlines().getEndDeadlines().size();
-    		}
-    	} else if (result instanceof Collection<?>) {
-            ((Collection<?>) result).size();
-    	}	
     }
     
 	private static class TaskSynchronizationImpl extends

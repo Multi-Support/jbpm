@@ -21,9 +21,11 @@ public class TaskSummariesByIdsQuery implements MapDBQuery<List<TaskSummary>> {
 		List<TaskSummary> retval = new ArrayList<>();
 		if (taskIds != null) {
 			for (Long taskId : taskIds) {
-				Task task = tts.getById().get(taskId);
-				if (task != null) {
-					retval.add(new TaskSummaryImpl(task));
+				if (tts.getById().containsKey(taskId)) {
+					Task task = tts.getById().get(taskId);
+					if (task != null) {
+						retval.add(new TaskSummaryImpl(task));
+					}
 				}
 			}
 		}

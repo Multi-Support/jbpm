@@ -1,8 +1,10 @@
 package org.jbpm.services.task.persistence.query;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.jbpm.services.task.persistence.index.TaskTableService;
 import org.kie.api.task.UserGroupCallback;
@@ -15,11 +17,16 @@ public class TasksByWorkItemIdQuery implements MapDBQuery<List<Task>> {
 			Map<String, Object> params, TaskTableService tts,
 			boolean singleResult) {
 		Long workItemId = (Long) params.get("workItemId");
-		long[] values = tts.getByWorkItemId().get(workItemId);
+		Set<Long> values = new HashSet<>();
+		MapDBQueryUtil.addAll(values, tts.getByWorkItemId(), workItemId);
 		List<Task> retval = new ArrayList<>();
 		for (long id : values) {
-			Task task = tts.getById().get(id);
-			retval.add(task);
+			if (tts.getById().containsKey(id)) {
+				Task task = tts.getById().get(id);
+				if (task != null) {
+					retval.add(task);
+				}
+			}
 		}
 		return retval;
 	}

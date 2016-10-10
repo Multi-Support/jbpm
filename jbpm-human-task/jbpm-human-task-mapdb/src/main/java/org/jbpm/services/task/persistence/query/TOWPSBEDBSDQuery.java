@@ -21,17 +21,18 @@ public class TOWPSBEDBSDQuery implements MapDBQuery<List<TaskSummary>> {
 			Map<String, Object> params, TaskTableService tts,
 			boolean singleResult) {
 		Date date = (Date) params.get("date");
+		@SuppressWarnings("unchecked")
 		List<Status> status = (List<Status>) params.get("status");
 		String userId = (String) params.get("userId");
 	
 		Set<Long> values = new HashSet<>();
-		addAll(values, tts.getByActualOwner().get(userId));
-		addAll(values, tts.getByPotentialOwner().get(userId));
+		MapDBQueryUtil.addAll(values, tts.getByActualOwner(), userId);
+		MapDBQueryUtil.addAll(values, tts.getByPotentialOwner(), userId);
 
 		Set<Long> valuesByStatus = new HashSet<>();
 		if (status != null) {
 			for (Status stat : status) {
-				addAll(valuesByStatus, tts.getByStatus().get(stat.name()));
+				MapDBQueryUtil.addAll(valuesByStatus, tts.getByStatus(), stat.name());
 			}
 		}
 	
@@ -39,9 +40,11 @@ public class TOWPSBEDBSDQuery implements MapDBQuery<List<TaskSummary>> {
 	
 		final List<TaskSummary> retval = new ArrayList<TaskSummary>();
 		for (Long taskId : values) {
-			Task task = tts.getById().get(taskId);
-			if (task != null && matchesCondition(date, task)) {
-				retval.add(new TaskSummaryImpl(task));
+			if (tts.getById().containsKey(taskId)) {
+				Task task = tts.getById().get(taskId);
+				if (matchesCondition(date, task)) {
+					retval.add(new TaskSummaryImpl(task));
+				}
 			}
 		}
 		return retval;
@@ -50,13 +53,5 @@ public class TOWPSBEDBSDQuery implements MapDBQuery<List<TaskSummary>> {
 	private boolean matchesCondition(Date date, Task task) {
 		Date expTime = task.getTaskData().getExpirationTime();
 		return date != null && date.before(expTime);
-	}
-
-	private void addAll(Set<Long> values, long[] v) {
-		if (v != null) {
-			for (long value : v) {
-				values.add(value);
-			}
-		}
 	}
 }

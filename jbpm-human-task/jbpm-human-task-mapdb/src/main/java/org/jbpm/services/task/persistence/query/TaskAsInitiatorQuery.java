@@ -19,24 +19,17 @@ public class TaskAsInitiatorQuery implements MapDBQuery<List<TaskSummary>> {
 			Map<String, Object> params, TaskTableService tts, boolean singleResult) {
 		String userId = (String) params.get("userId");
 		Set<Long> values = new HashSet<>();
-		addAll(values, tts.getByInitiator().get(userId));
+		MapDBQueryUtil.addAll(values, tts.getByInitiator(), userId);
 		
 		final List<TaskSummary> retval = new ArrayList<TaskSummary>();
 		for (Long taskId : values) {
-			Task task = tts.getById().get(taskId);
-			if (task != null) {
-				retval.add(new TaskSummaryImpl(task));
+			if (tts.getById().containsKey(taskId)) {
+				Task task = tts.getById().get(taskId);
+				if (task != null) {
+					retval.add(new TaskSummaryImpl(task));
+				}
 			}
 		}
 		return retval;
 	}
-
-	private void addAll(Set<Long> values, long[] v) {
-		if (v != null) {
-			for (long value : v) {
-				values.add(value);
-			}
-		}
-	}
-
 }

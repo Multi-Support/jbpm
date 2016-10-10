@@ -25,7 +25,7 @@ public class TaskOwnedPotentialOwnersByTaskIdsQuery implements MapDBQuery<List<O
 		
 		Set<Long> valuesByStatus = new HashSet<>();
 		for (Status s : status) {
-			addAll(valuesByStatus, tts.getByStatus().get(s.name()));
+			MapDBQueryUtil.addAll(valuesByStatus, tts.getByStatus(), s.name());
 		}
 		
 		valuesByStatus.retainAll(taskIds);
@@ -33,22 +33,15 @@ public class TaskOwnedPotentialOwnersByTaskIdsQuery implements MapDBQuery<List<O
 		List<Object[]> retval = new LinkedList<>();
 		
 		for (Long id : valuesByStatus) {
-			Task task = tts.getById().get(id);
-			if (task != null) {
-				for (OrganizationalEntity entity: task.getPeopleAssignments().getPotentialOwners()) {
-					retval.add(new Object[] { id, entity.getId()});
+			if (tts.getById().containsKey(id)) {
+				Task task = tts.getById().get(id);
+				if (task != null) {
+					for (OrganizationalEntity entity: task.getPeopleAssignments().getPotentialOwners()) {
+						retval.add(new Object[] { id, entity.getId()});
+					}
 				}
 			}
 		}
-		
 		return retval;
-	}
-
-	private void addAll(Set<Long> values, long[] v) {
-		if (v != null) {
-			for (long value : v) {
-				values.add(value);
-			}
-		}
 	}
 }

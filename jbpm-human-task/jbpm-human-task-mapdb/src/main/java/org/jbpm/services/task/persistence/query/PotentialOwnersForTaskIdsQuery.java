@@ -19,10 +19,12 @@ public class PotentialOwnersForTaskIdsQuery implements MapDBQuery<List<Object[]>
 		List<Long> taskIds = (List<Long>) params.get("taskIds");
 		List<Object[]> retval = new LinkedList<>();
 		for (Long id : taskIds) {
-			Task task = tts.getById().get(id);
-			if (task != null) {
-				for (OrganizationalEntity entity : task.getPeopleAssignments().getPotentialOwners()) {
-					retval.add(new Object[] {id, entity});
+			if (tts.getById().containsKey(id)) {
+				Task task = tts.getById().get(id);
+				if (task != null) {
+					for (OrganizationalEntity entity : task.getPeopleAssignments().getPotentialOwners()) {
+						retval.add(new Object[] {id, entity});
+					}
 				}
 			}
 		}

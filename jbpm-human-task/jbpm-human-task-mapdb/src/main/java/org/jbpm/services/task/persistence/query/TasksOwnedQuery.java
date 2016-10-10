@@ -18,25 +18,16 @@ public class TasksOwnedQuery implements MapDBQuery<List<TaskSummary>> {
 	public List<TaskSummary> execute(UserGroupCallback callback,
 			Map<String, Object> params, TaskTableService tts,
 			boolean singleResult) {
+		@SuppressWarnings("unchecked")
 		List<Status> status = (List<Status>) params.get("status");
 		String userId = (String) params.get("userId");
 		
 		Set<Long> idsByOwner = new HashSet<>();
-		long[] ids = tts.getByActualOwner().get(userId);
-		if (ids != null) {
-			for (long id : ids) {
-				idsByOwner.add(id);
-			}
-		}
+		MapDBQueryUtil.addAll(idsByOwner, tts.getByActualOwner(), userId);
 		
 		Set<Long> idsByStatus = new HashSet<>();
 		for (Status s : status) {
-			ids = tts.getByStatus().get(s.name());
-			if (ids != null) {
-				for (long id : ids) {
-					idsByStatus.add(id);
-				}
-			}
+			MapDBQueryUtil.addAll(idsByStatus, tts.getByStatus(), s.name());
 		}
 		
 		idsByOwner.retainAll(idsByStatus);

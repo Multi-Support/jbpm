@@ -59,23 +59,27 @@ public class TaskSerializer extends GroupSerializerObjectArray<Task> {
 	@Override
 	public void serialize(DataOutput2 out, Task value) throws IOException {
 		InternalTask task = (InternalTask) value;
-		writeDeadlines("startDeadlines", out, task.getDeadlines().getStartDeadlines());
-		writeDeadlines("endDeadlines", out, task.getDeadlines().getEndDeadlines());
-		Delegation del = task.getDelegation();
-		writeStringEntry("delegation.allowed", out, del == null ? null : del.getAllowed() == null ? null : del.getAllowed().name());
-		writeOrgEntities("delegation.delegates", out, del == null ? null : del.getDelegates());
-		writeI18NTexts("descriptions", out, task.getDescriptions());
-		writeStringEntry("description", out, task.getDescription());
-		writeStringEntry("formName", out, task.getFormName());
-		writeLongEntry("id", out, task.getId());
-		writeStringEntry("name", out, task.getName());
-		writePeopleAssignments("peopleAssignments", out, (InternalPeopleAssignments) task.getPeopleAssignments());
-		writeIntEntry("priority", out, task.getPriority());
-		writeStringEntry("subject", out, task.getSubject());
-		writeI18NTexts("subjects", out, task.getSubjects());
-		writeStringEntry("subTaskStrategy", out, task.getSubTaskStrategy() == null ? null : task.getSubTaskStrategy().name());
-		writeTaskData("taskData", out, (InternalTaskData) task.getTaskData());
-		writeStringEntry("taskType", out, task.getTaskType());
+		if (task != null) {
+			if (task.getDeadlines() != null) {
+				writeDeadlines("startDeadlines", out, task.getDeadlines().getStartDeadlines());
+				writeDeadlines("endDeadlines", out, task.getDeadlines().getEndDeadlines());
+			}
+			Delegation del = task.getDelegation();
+			writeStringEntry("delegation.allowed", out, del == null ? null : del.getAllowed() == null ? null : del.getAllowed().name());
+			writeOrgEntities("delegation.delegates", out, del == null ? null : del.getDelegates());
+			writeI18NTexts("descriptions", out, task.getDescriptions());
+			writeStringEntry("description", out, task.getDescription());
+			writeStringEntry("formName", out, task.getFormName());
+			writeLongEntry("id", out, task.getId());
+			writeStringEntry("name", out, task.getName());
+			writePeopleAssignments("peopleAssignments", out, (InternalPeopleAssignments) task.getPeopleAssignments());
+			writeIntEntry("priority", out, task.getPriority());
+			writeStringEntry("subject", out, task.getSubject());
+			writeI18NTexts("subjects", out, task.getSubjects());
+			writeStringEntry("subTaskStrategy", out, task.getSubTaskStrategy() == null ? null : task.getSubTaskStrategy().name());
+			writeTaskData("taskData", out, (InternalTaskData) task.getTaskData());
+			writeStringEntry("taskType", out, task.getTaskType());
+		}
 		out.writeBoolean(false);
 	}
 	

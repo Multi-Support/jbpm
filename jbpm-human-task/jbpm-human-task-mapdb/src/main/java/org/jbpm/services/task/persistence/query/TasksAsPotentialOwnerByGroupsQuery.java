@@ -40,28 +40,30 @@ public class TasksAsPotentialOwnerByGroupsQuery implements MapDBQuery<List<Objec
 		}
 		Set<Long> values = new HashSet<>();
 		for (String groupId : groupIds) {
-			addAll(values, tts.getByPotentialOwner().get(groupId));
+			MapDBQueryUtil.addAll(values, tts.getByPotentialOwner(), groupId);
 		}
 		Set<Long> valuesByStatus = new HashSet<>();
 		for (Status s : status) {
-			addAll(valuesByStatus, tts.getByStatus().get(s.name()));
+			MapDBQueryUtil.addAll(valuesByStatus, tts.getByStatus(), s.name());
 		}
 		
 		values.retainAll(valuesByStatus);
 		
-		for (long[] taskWithOwners : tts.getByActualOwner().values()) {
-			removeAll(values, taskWithOwners);
+		for (String owner : tts.getByActualOwner().keySet()) {
+			MapDBQueryUtil.removeAll(values, tts.getByActualOwner(), owner);
 		}
 		
 		List<Object[]> retval = new LinkedList<>();
 		
 		for (Long taskId : values) {
-			Task task = tts.getById().get(taskId);
-			if (violatesExpDateCondition(expDate, task)) {
-				continue;
-			}
-			for (OrganizationalEntity entity : task.getPeopleAssignments().getPotentialOwners()) {
-				retval.add(new Object[] { taskId, entity.getId()});
+			if (tts.getById().containsKey(taskId)) {
+				Task task = tts.getById().get(taskId);
+				if (violatesExpDateCondition(expDate, task)) {
+					continue;
+				}
+				for (OrganizationalEntity entity : task.getPeopleAssignments().getPotentialOwners()) {
+					retval.add(new Object[] { taskId, entity.getId()});
+				}
 			}
 		}
 		return retval;
@@ -76,24 +78,6 @@ public class TasksAsPotentialOwnerByGroupsQuery implements MapDBQuery<List<Objec
 			return expDate != null 
 					&& (task.getTaskData().getExpirationTime() == null 
 					|| expDate.equals(task.getTaskData().getExpirationTime()));
-		}
-	}
-
-	private void addAll(Set<Long> values, long[] v) {
-		if (v != null) {
-			for (long value : v) {
-				values.add(value);
-			}
-		}
-	}
-
-	private void removeAll(Set<Long> values, long[] v) {
-		if (v != null) {
-			for (long value : v) {
-				if (values.contains(value)) {
-					values.remove(value);
-				}
-			}
 		}
 	}
 }

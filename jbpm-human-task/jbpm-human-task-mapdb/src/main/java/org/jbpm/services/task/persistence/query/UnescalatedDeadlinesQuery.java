@@ -33,8 +33,8 @@ public class UnescalatedDeadlinesQuery implements MapDBQuery<List<DeadlineSummar
 		}
 		List<DeadlineSummary> retval = new ArrayList<>();
 		for (Long taskId : ids) {
-			Task task = tts.getById().get(taskId);
-			if (task != null) {
+			if (tts.getById().containsKey(taskId)) {
+				Task task = tts.getById().get(taskId);
 				Deadlines d = ((InternalTask) task).getDeadlines();
 				List<Deadline> list = isEndDeadlines ? d.getEndDeadlines() : d.getStartDeadlines();
 				for(Deadline dl : list) {

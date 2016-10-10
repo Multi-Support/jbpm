@@ -144,7 +144,7 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 
 	@Override
 	public Group findGroup(String groupId) {
-		OrganizationalEntity value = orgEntities.getOrDefault("GROUP_" + groupId, null);
+		OrganizationalEntity value = orgEntities.getOrDefault(groupId, null);
 		if (value instanceof Group) {
 			return (Group) value;
 		}
@@ -153,7 +153,14 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 
 	@Override
 	public Group persistGroup(Group group) {
-		orgEntities.put("GROUP_" + group.getId(), group);
+		if (orgEntities.containsKey(group.getId())) {
+			OrganizationalEntity entity = orgEntities.get(group.getId());
+			if (!(entity instanceof Group)) {
+				throw new RuntimeException("Group already exists with " + group
+    				+ " id, please check that there is no group and user with same id");
+			}
+		}
+		orgEntities.put(group.getId(), group);
 		return group;
 	}
 
@@ -164,13 +171,13 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 
 	@Override
 	public Group removeGroup(Group group) {
-		orgEntities.remove("GROUP_" + group.getId());
+		orgEntities.remove(group.getId());
 		return group;
 	}
 
 	@Override
 	public User findUser(String userId) {
-		OrganizationalEntity value = orgEntities.getOrDefault("USER_" + userId, null);
+		OrganizationalEntity value = orgEntities.getOrDefault(userId, null);
 		if (value instanceof User) {
 			return (User) value;
 		}
@@ -179,7 +186,14 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 
 	@Override
 	public User persistUser(User user) {
-		orgEntities.put("USER_" + user.getId(), user);
+		if (orgEntities.containsKey(user.getId())) {
+			OrganizationalEntity entity = orgEntities.get(user.getId());
+			if (!(entity instanceof User)) {
+				throw new RuntimeException("User already exists with " + user
+	    				+ " id, please check that there is no group and user with same id");
+			}
+		}
+		orgEntities.put(user.getId(), user);
         return user;
 	}
 
@@ -190,17 +204,16 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 
 	@Override
 	public User removeUser(User user) {
-		orgEntities.remove("USER_" + user.getId());
+		orgEntities.remove(user.getId());
 		return user;
 	}
 
 	@Override
 	public OrganizationalEntity findOrgEntity(String orgEntityId) {
-		OrganizationalEntity entity = findUser(orgEntityId);
-		if (entity == null) {
-			entity = findGroup(orgEntityId);
+		if (!orgEntities.containsKey(orgEntityId)) {
+			return null;
 		}
-		return entity;
+		return orgEntities.get(orgEntityId);
 	}
 
 	@Override
@@ -348,7 +361,7 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 
 	@Override
 	public Comment removeComment(Comment comment) {
-		this.comments.remove(comment);
+		this.comments.remove(comment.getId());
 		return comment;
 	}
 	
@@ -456,9 +469,23 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 		throw new UnsupportedOperationException("Not implemented yet");//TODO
 	}
 
-	@Override
+	@Override //TODO make this method part of an abstract implementation
 	public HashMap<String, Object> addParametersToMap(Object... parameterValues) {
-		throw new UnsupportedOperationException("Not implemented yet");//TODO
+		HashMap<String, Object> parameters = new HashMap<String, Object>();
+        if( parameterValues.length % 2 != 0 ) {
+            throw new RuntimeException("Expected an even number of parameters, not " + parameterValues.length);
+        }
+        for( int i = 0; i < parameterValues.length; ++i ) {
+            String parameterName = null;
+            if( parameterValues[i] instanceof String ) {
+                parameterName = (String) parameterValues[i];
+            } else {
+                throw new RuntimeException("Expected a String as the parameter name, not a " + parameterValues[i].getClass().getSimpleName());
+            }
+            ++i;
+            parameters.put(parameterName, parameterValues[i]);
+        }
+        return parameters;
 	}
 
 	@Override

@@ -75,6 +75,12 @@
    </dependency>
    <dependency>
       <groupId>org.jbpm</groupId>
+      <artifactId>jbpm-human-task-core</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
+   </dependency>
+   <dependency>
+      <groupId>org.jbpm</groupId>
       <artifactId>jbpm-human-task-workitems</artifactId>
       <scope>test</scope>
    </dependency>

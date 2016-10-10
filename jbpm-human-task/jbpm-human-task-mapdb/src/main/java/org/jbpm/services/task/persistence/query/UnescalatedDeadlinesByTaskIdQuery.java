@@ -26,9 +26,9 @@ public class UnescalatedDeadlinesByTaskIdQuery implements MapDBQuery<List<Deadli
 			Map<String, Object> params, TaskTableService tts,
 			boolean singleResult) {
 		Long taskId = (Long) params.get("taskId");
-		Task task = tts.getById().get(taskId);
 		List<DeadlineSummary> retval = new ArrayList<>();
-		if (task != null) {
+		if (tts.getById().containsKey(taskId)) {
+			Task task = tts.getById().get(taskId);
 			Deadlines d = ((InternalTask) task).getDeadlines();
 			List<Deadline> list = isEndDeadlines ? d.getEndDeadlines() : d.getStartDeadlines();
 			for (Deadline dl : list) {

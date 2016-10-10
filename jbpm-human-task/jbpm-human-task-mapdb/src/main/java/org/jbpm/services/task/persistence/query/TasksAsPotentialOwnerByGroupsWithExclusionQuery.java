@@ -31,50 +31,34 @@ public class TasksAsPotentialOwnerByGroupsWithExclusionQuery implements MapDBQue
 				Status.InProgress, Status.Suspended);
 		}
 		Set<Long> values = new HashSet<>();
-		addAll(values, tts.getByActualOwner().get(userId));
-		addAll(values, tts.getByPotentialOwner().get(userId));
+		MapDBQueryUtil.addAll(values, tts.getByActualOwner(), userId);
+		MapDBQueryUtil.addAll(values, tts.getByPotentialOwner(), userId);
 		for (String groupId : groupIds) {
-			addAll(values, tts.getByPotentialOwner().get(groupId));
+			MapDBQueryUtil.addAll(values, tts.getByPotentialOwner(), groupId);
 		}
-		removeAll(values, tts.getByExclOwner().get(userId));
+		MapDBQueryUtil.removeAll(values, tts.getByExclOwner(), userId);
 		
 		Set<Long> valuesByStatus = new HashSet<>();
 		for (Status s : status) {
-			addAll(valuesByStatus, tts.getByStatus().get(s.name()));
+			MapDBQueryUtil.addAll(valuesByStatus, tts.getByStatus(), s.name());
 		}
 		
 		values.retainAll(valuesByStatus);
 		
-		for (long[] taskWithOwners : tts.getByActualOwner().values()) {
-			addAll(values, taskWithOwners);
+		for (String owner : tts.getByActualOwner().keySet()) {
+			MapDBQueryUtil.addAll(values, tts.getByActualOwner(), owner);
 		}
 		
 		List<TaskSummary> retval = new LinkedList<TaskSummary>();
 		
 		for (Long taskId : values) {
-			Task task = tts.getById().get(taskId);
-			if (task != null) {
-				retval.add(new TaskSummaryImpl(task));
-			}
-		}
-		return retval;
-	}
-
-	private void addAll(Set<Long> values, long[] v) {
-		if (v != null) {
-			for (long value : v) {
-				values.add(value);
-			}
-		}
-	}
-
-	private void removeAll(Set<Long> values, long[] v) {
-		if (v != null) {
-			for (long value : v) {
-				if (values.contains(value)) {
-					values.remove(value);
+			if (tts.getById().containsKey(taskId)) {
+				Task task = tts.getById().get(taskId);
+				if (task != null) {
+					retval.add(new TaskSummaryImpl(task));
 				}
 			}
 		}
+		return retval;
 	}
 }

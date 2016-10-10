@@ -3,12 +3,15 @@ package org.jbpm.services.task.persistence.index;
 import java.util.Arrays;
 import java.util.Map;
 
+import org.jbpm.services.task.persistence.OrganizationalEntitySerializer;
 import org.jbpm.services.task.persistence.TaskSerializer;
 import org.kie.api.task.model.OrganizationalEntity;
 import org.kie.api.task.model.Task;
+import org.kie.api.task.model.User;
 import org.kie.internal.task.api.model.Deadline;
 import org.kie.internal.task.api.model.InternalPeopleAssignments;
 import org.kie.internal.task.api.model.InternalTask;
+import org.mapdb.BTreeMap;
 import org.mapdb.DB;
 import org.mapdb.HTreeMap;
 import org.mapdb.Serializer;
@@ -29,6 +32,7 @@ public class TaskTableService {
 	private static HTreeMap<Long, long[]> byParentId = null;
 	private static HTreeMap<Long, long[]> byDeadlineId = null;
 	private static HTreeMap<Long, Task> byId = null;
+	private static BTreeMap<String, OrganizationalEntity> orgEntities = null;
 	
 	private static synchronized void init(DB db) {
 		if (byId == null || byId.isClosed()) {
@@ -46,6 +50,7 @@ public class TaskTableService {
 			byDeadlineId = db.hashMap("taskByWorkItemId", Serializer.LONG, Serializer.LONG_ARRAY).createOrOpen();
 			byContentId = db.hashMap("taskByContentId", Serializer.LONG, Serializer.LONG_ARRAY).createOrOpen();
 			byProcessInstanceId = db.hashMap("byProcessInstanceId", Serializer.LONG, Serializer.LONG_ARRAY).createOrOpen();
+			orgEntities = db.treeMap("orgEntity", Serializer.STRING, new OrganizationalEntitySerializer()).createOrOpen();
 		}
 	}
 
@@ -60,17 +65,19 @@ public class TaskTableService {
 		String status = task.getTaskData().getStatus().name();
 		updateEntry(status, byStatus, taskId);
 		if (task.getPeopleAssignments().getTaskInitiator() != null) {
-			updateEntry(task.getPeopleAssignments().getTaskInitiator().getId(), byInitiator, taskId);
+			updateEntry(toString(task.getPeopleAssignments().getTaskInitiator()), byInitiator, taskId);
 		}
 		
-		if (((InternalTask) task).getDeadlines().getStartDeadlines() != null) {
-			for (Deadline dl : ((InternalTask) task).getDeadlines().getStartDeadlines()) {
-				updateEntry(dl.getId(), byDeadlineId, taskId);
+		if (((InternalTask) task).getDeadlines() != null) {
+			if (((InternalTask) task).getDeadlines().getStartDeadlines() != null) {
+				for (Deadline dl : ((InternalTask) task).getDeadlines().getStartDeadlines()) {
+					updateEntry(dl.getId(), byDeadlineId, taskId);
+				}
 			}
-		}
-		if (((InternalTask) task).getDeadlines().getEndDeadlines() != null) {
-			for (Deadline dl : ((InternalTask) task).getDeadlines().getEndDeadlines()) {
-				updateEntry(dl.getId(), byDeadlineId, taskId);
+			if (((InternalTask) task).getDeadlines().getEndDeadlines() != null) {
+				for (Deadline dl : ((InternalTask) task).getDeadlines().getEndDeadlines()) {
+					updateEntry(dl.getId(), byDeadlineId, taskId);
+				}
 			}
 		}
 		
@@ -81,22 +88,22 @@ public class TaskTableService {
 			updateEntry(task.getTaskData().getWorkItemId(), byWorkItemId, taskId);
 		}
 		if (task.getTaskData().getActualOwner() != null) {
-			updateEntry(task.getTaskData().getActualOwner().getId(), byActualOwner, taskId);
+			updateEntry(toString(task.getTaskData().getActualOwner()), byActualOwner, taskId);
 		}
 		for (OrganizationalEntity entity : task.getPeopleAssignments().getPotentialOwners()) {
-			updateEntry(entity.getId(), byPotentialOwner, taskId);
+			updateEntry(toString(entity), byPotentialOwner, taskId);
 		}
 		for (OrganizationalEntity entity : ((InternalPeopleAssignments) task.getPeopleAssignments()).getExcludedOwners()) {
-			updateEntry(entity.getId(), byExclOwner, taskId);
+			updateEntry(toString(entity), byExclOwner, taskId);
 		}
 		for (OrganizationalEntity entity : task.getPeopleAssignments().getBusinessAdministrators()) {
-			updateEntry(entity.getId(), byBizAdmin, taskId);
+			updateEntry(toString(entity), byBizAdmin, taskId);
 		}
 		for (OrganizationalEntity entity : ((InternalPeopleAssignments) task.getPeopleAssignments()).getRecipients()) {
-			updateEntry(entity.getId(), byRecipient, taskId);
+			updateEntry(toString(entity), byRecipient, taskId);
 		}
 		for (OrganizationalEntity entity : ((InternalPeopleAssignments) task.getPeopleAssignments()).getTaskStakeholders()) {
-			updateEntry(entity.getId(), byStakeholder, taskId);
+			updateEntry(toString(entity), byStakeholder, taskId);
 		}
 		if (task.getTaskData().getDocumentContentId() >= 0) {
 			updateEntry(task.getTaskData().getDocumentContentId(), byContentId, taskId);
@@ -275,5 +282,19 @@ public class TaskTableService {
 	public void removeTaskContentRelation(Task task, long contentId) {
 		long[] original = byContentId.get(contentId);
 		byContentId.put(contentId, removeId(task.getId(), original));
+	}
+	
+	public String toString(OrganizationalEntity entity) {
+		return entity.getId();
+	}
+
+	public void validateIsUser(String userId) {
+		if (orgEntities.containsKey(userId)) {
+			OrganizationalEntity entity = orgEntities.get(userId);
+			if (!(entity instanceof User)) {
+				throw new RuntimeException("User already exists with " + entity
+						+ " id, please check that there is no group and user with same id");				
+			}
+		}
 	}
 }

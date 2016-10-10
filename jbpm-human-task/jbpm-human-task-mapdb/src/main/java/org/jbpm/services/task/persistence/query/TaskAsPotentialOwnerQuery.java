@@ -31,27 +31,20 @@ public class TaskAsPotentialOwnerQuery implements MapDBQuery<List<TaskSummary>> 
 		if (groupIds == null || groupIds.isEmpty()) {
 			groupIds = callback.getGroupsForUser(userId, null, null);
 		}
-		
+		tts.validateIsUser(userId);
 		Set<Long> values = new HashSet<>();
-		addAll(values, tts.getByActualOwner().get(userId));
-		addAll(values, tts.getByBizAdmin().get(userId));
+		MapDBQueryUtil.addAll(values, tts.getByActualOwner(), userId);
+		MapDBQueryUtil.addAll(values, tts.getByBizAdmin(), userId);
 		for (String groupId : groupIds) {
-			addAll(values, tts.getByBizAdmin().get(groupId));
-			addAll(values, tts.getByPotentialOwner().get(groupId));
+			MapDBQueryUtil.addAll(values, tts.getByBizAdmin(), groupId);
+			MapDBQueryUtil.addAll(values, tts.getByPotentialOwner(), groupId);
 		}
-		long[] exclOwnerTasks = tts.getByExclOwner().get(userId);
-		if (exclOwnerTasks != null) {
-			for (long taskId : exclOwnerTasks) {
-				if (values.contains(taskId)) {
-					values.remove(taskId);
-				}
-			}
-		}
+		MapDBQueryUtil.removeAll(values, tts.getByExclOwner(), userId);
 
 		Set<Long> valuesByStatus = new HashSet<>();
 		if (status != null) {
 			for (Status stat : status) {
-				addAll(valuesByStatus, tts.getByStatus().get(stat.name()));
+				MapDBQueryUtil.addAll(valuesByStatus, tts.getByStatus(), stat.name());
 			}
 		}
 		
@@ -59,20 +52,13 @@ public class TaskAsPotentialOwnerQuery implements MapDBQuery<List<TaskSummary>> 
 		
 		final List<TaskSummary> retval = new ArrayList<TaskSummary>();
 		for (Long taskId : values) {
-			Task task = tts.getById().get(taskId);
-			if (task != null) {
-				retval.add(new TaskSummaryImpl(task));
+			if (tts.getById().containsKey(taskId)) {
+				Task task = tts.getById().get(taskId);
+				if (task != null) {
+					retval.add(new TaskSummaryImpl(task));
+				}
 			}
 		}
 		return retval;
 	}
-
-	private void addAll(Set<Long> values, long[] v) {
-		if (v != null) {
-			for (long value : v) {
-				values.add(value);
-			}
-		}
-	}
-
 }

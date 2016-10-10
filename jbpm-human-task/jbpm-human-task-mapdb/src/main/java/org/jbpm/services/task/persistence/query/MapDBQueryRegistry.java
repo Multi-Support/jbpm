@@ -18,6 +18,7 @@ public class MapDBQueryRegistry {
 	}
 	
 	private void init() {
+		registry.put("AttachmentsByTaskId", new AttachmentsByTaskIdQuery());
         registry.put("TasksByStatus", new TasksByStatusQuery());
         registry.put("TasksByStatusByProcessId", new TasksByStatusAndProcessInstanceIdQuery());
         registry.put("TasksByStatusByProcessIdByTaskName", new TasksByStatusAndProcessInstanceIdQuery());
@@ -25,6 +26,7 @@ public class MapDBQueryRegistry {
         registry.put("TasksByStatusSince", new TasksByStatusQuery());
         registry.put("TasksAssignedAsExcludedOwner", new TaskAsExcludedOwnerQuery());
         registry.put("TasksAssignedAsPotentialOwner", new TaskAsPotentialOwnerQuery());
+        registry.put("TasksAssignedAsPotentialOwnerByStatus", new TaskAsPotentialOwnerQuery());
         registry.put("TasksAssignedAsPotentialOwnerWithGroups", new TaskAsPotentialOwnerQuery());
         registry.put("TasksAssignedAsPotentialOwnerByGroup", new TaskAsPotentialOwnerByGroupQuery());
         registry.put("TasksAssignedAsPotentialOwnerByGroups", new TasksAsPotentialOwnerByGroupsQuery(true));

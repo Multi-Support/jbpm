@@ -69,7 +69,7 @@ public class TestTaskAndTimers {
     	KieServices ks = KieServices.Factory.get();
         Assert.assertNotNull(new KnowledgeStoreServiceImpl()); //make sure services are loaded
         final KieBase kbase = createKieBase(ks);
-        int size = 30;  
+        int size = 10;  
         Properties userGroups = new Properties();
         userGroups.setProperty("mary", "g1");
         userGroups.setProperty("john", "g2");

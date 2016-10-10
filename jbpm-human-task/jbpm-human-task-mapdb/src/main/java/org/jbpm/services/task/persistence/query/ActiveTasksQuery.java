@@ -23,16 +23,16 @@ public class ActiveTasksQuery implements MapDBQuery<List<Task>> {
 				Status.InProgress.name() };
 		Set<Long> ids = new HashSet<>();
 		for (String status : activeStatuses) {
-			long[] values = tts.getByStatus().get(status);
-			if (values != null) {
-				for (long id : values) {
-					ids.add(id);
-				}
-			}
+			MapDBQueryUtil.addAll(ids, tts.getByStatus(), status);
 		}
 		List<Task> retval = new ArrayList<>(ids.size());
 		for (Long id : ids) {
-			retval.add(tts.getById().get(id));
+			if (tts.getById().containsKey(id)) {
+				Task task = tts.getById().get(id);
+				if (task != null) {
+					retval.add(task);
+				}
+			}
 		}
 		return retval;
 	}
