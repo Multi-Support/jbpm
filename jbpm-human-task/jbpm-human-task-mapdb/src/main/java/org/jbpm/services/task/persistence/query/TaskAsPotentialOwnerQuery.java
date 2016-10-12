@@ -35,6 +35,7 @@ public class TaskAsPotentialOwnerQuery implements MapDBQuery<List<TaskSummary>> 
 		Set<Long> values = new HashSet<>();
 		MapDBQueryUtil.addAll(values, tts.getByActualOwner(), userId);
 		MapDBQueryUtil.addAll(values, tts.getByBizAdmin(), userId);
+		MapDBQueryUtil.addAll(values, tts.getByPotentialOwner(), userId);
 		for (String groupId : groupIds) {
 			MapDBQueryUtil.addAll(values, tts.getByBizAdmin(), groupId);
 			MapDBQueryUtil.addAll(values, tts.getByPotentialOwner(), groupId);

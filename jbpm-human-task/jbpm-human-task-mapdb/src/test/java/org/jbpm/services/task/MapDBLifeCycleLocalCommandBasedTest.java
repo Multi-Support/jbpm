@@ -39,36 +39,7 @@ public class MapDBLifeCycleLocalCommandBasedTest extends LifeCycleBaseTest {
 		MapDBProcessPersistenceUtil.cleanUp(context);
 	}
 	
-	@Override
-	public void testSuspendFromReserved() {
-		// TODO do nothing to avoid issues to be fixed yet
-	}
-	
-	@Override
-	public void testSuspendFromReady() {
-		// TODO do nothing to avoid issues to be fixed yet
-	}
-	
-	@Override
-	public void testWithNoTaskAndEmptyLists() {
-		// TODO do nothing to avoid issues to be fixed yet
-	}
-	
-	@Override
-	public void testStartFromReadyStateWithIncorrectPotentialOwner() {
-		// TODO do nothing to avoid issues to be fixed yet
-	}
-	
-	@Override
-	public void testResumeFromReady() {
-		// TODO do nothing to avoid issues to be fixed yet
-	}
-	
-	@Override
-	public void testResumeFromReserved() {
-		// TODO do nothing to avoid issues to be fixed yet
-	}
-	
+/*
 	@Override
 	public void testSkipFromReady() {
 		// TODO do nothing to avoid issues to be fixed yet
@@ -78,24 +49,5 @@ public class MapDBLifeCycleLocalCommandBasedTest extends LifeCycleBaseTest {
 	public void testSkipFromReserved() {
 		// TODO do nothing to avoid issues to be fixed yet
 	}
-	
-	@Override
-	public void testClaimConflictAndRetry() {
-		// TODO do nothing to avoid issues to be fixed yet
-	}
-	
-	@Override
-	public void testNewTaskWithSingleInvalidPotentialOwner() {
-		// TODO do nothing to avoid issues to be fixed yet
-	}
-	
-	@Override
-	public void testCompleteByActiveTasks() {
-		// TODO do nothing to avoid issues to be fixed yet
-	}
-	
-	@Override
-	public void testFailWithContent() {
-		// TODO do nothing to avoid issues to be fixed yet
-	}
+*/
 }

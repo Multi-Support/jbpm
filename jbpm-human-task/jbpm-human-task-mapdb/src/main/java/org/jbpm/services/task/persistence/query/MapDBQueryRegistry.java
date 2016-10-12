@@ -43,7 +43,7 @@ public class MapDBQueryRegistry {
         registry.put("GetActiveTasks", new ActiveTasksQuery());
         registry.put("GetAllTasks", new AllTasksQuery());
         registry.put("NewTasksAssignedAsPotentialOwner", new TaskAsPotentialOwnerQuery());
-		registry.put("ArchivedTasks", new EmptyTaskQuery()); //we don't archive for now
+		registry.put("ArchivedTasks", new ArchivedTaskQuery());
 		registry.put("TasksOwnedPotentialOwnersByTaskIds", new TaskOwnedPotentialOwnersByTaskIdsQuery());
 		registry.put("TasksAssignedAsBusinessAdministratorByStatus", new TasksByBizAdminStatusQuery());
 		registry.put("GetPotentialOwnersForTaskIds", new PotentialOwnersForTaskIdsQuery());

@@ -105,7 +105,7 @@ public class TaskAdminServiceImpl implements TaskAdminService {
             Task task = persistenceContext.findTask(taskId);
             if (task != null) {
 	            ((InternalTask) task).setArchived(true);
-	            persistenceContext.merge(task);
+	            persistenceContext.updateTask(task);
 	            archivedTasks++;
             }
         }

@@ -103,8 +103,14 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 
 	@Override
 	public Task findTask(Long taskId) {
+		if (taskId == null) {
+			return null;
+		}
 		if (taskCache.containsKey(taskId)) {
 			return taskCache.get(taskId);
+		}
+		if (!tts.getById().containsKey(taskId)) {
+			return null;
 		}
 		Task task = tts.getById().get(taskId);
 		if (task != null) {

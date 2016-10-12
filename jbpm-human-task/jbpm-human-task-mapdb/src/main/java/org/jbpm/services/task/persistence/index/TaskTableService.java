@@ -32,6 +32,7 @@ public class TaskTableService {
 	private static HTreeMap<Long, long[]> byParentId = null;
 	private static HTreeMap<Long, long[]> byDeadlineId = null;
 	private static HTreeMap<Long, Task> byId = null;
+	private static HTreeMap<Long, Task> byArchived = null;
 	private static BTreeMap<String, OrganizationalEntity> orgEntities = null;
 	
 	private static synchronized void init(DB db) {
@@ -45,6 +46,7 @@ public class TaskTableService {
 			byExclOwner = db.hashMap("taskByExclOwner", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
 			byBizAdmin = db.hashMap("taskByBizAdmin", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
 			byId = db.hashMap("taskById", Serializer.LONG, new TaskSerializer()).createOrOpen();
+			byArchived = db.hashMap("taskByArchived", Serializer.LONG, new TaskSerializer()).createOrOpen();
 			byParentId = db.hashMap("taskByParentId", Serializer.LONG, Serializer.LONG_ARRAY).createOrOpen();
 			byWorkItemId = db.hashMap("taskByWorkItemId", Serializer.LONG, Serializer.LONG_ARRAY).createOrOpen();
 			byDeadlineId = db.hashMap("taskByWorkItemId", Serializer.LONG, Serializer.LONG_ARRAY).createOrOpen();
@@ -61,6 +63,10 @@ public class TaskTableService {
 	public void update(Task task) {
 		Long taskId = task.getId();
 		clearMappings(taskId);
+		if (((InternalTask)task).isArchived()) {
+			byArchived.put(task.getId(), task);
+			return;
+		}
 		byId.put(task.getId(), task);
 		String status = task.getTaskData().getStatus().name();
 		updateEntry(status, byStatus, taskId);
@@ -271,6 +277,10 @@ public class TaskTableService {
 		return byDeadlineId;
 	}
 
+	public Map<Long, Task> getByArchived() {
+		return byArchived;
+	}
+
 	public void remove(Long taskId) {
 		clearMappings(taskId);
 	}
@@ -285,11 +295,12 @@ public class TaskTableService {
 	}
 	
 	public String toString(OrganizationalEntity entity) {
+		orgEntities.put(entity.getId(), entity);
 		return entity.getId();
 	}
 
 	public void validateIsUser(String userId) {
-		if (orgEntities.containsKey(userId)) {
+		if (userId != null && orgEntities.containsKey(userId)) {
 			OrganizationalEntity entity = orgEntities.get(userId);
 			if (!(entity instanceof User)) {
 				throw new RuntimeException("User already exists with " + entity

@@ -47,7 +47,7 @@ public class TasksByStatusQuery implements MapDBQuery<List<TaskSummary>> {
 
 	private List<TaskSummary> filter(List<TaskSummary> list, Date since) {
 		List<TaskSummary> retval = new ArrayList<>();
-		for (TaskSummary s : retval) {
+		for (TaskSummary s : list) {
 			if (s.getActivationTime() != null && s.getActivationTime().after(since)) {
 				retval.add(s);
 			}

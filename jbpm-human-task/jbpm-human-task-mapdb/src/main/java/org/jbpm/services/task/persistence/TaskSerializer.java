@@ -145,6 +145,7 @@ public class TaskSerializer extends GroupSerializerObjectArray<Task> {
 		writeLongEntry(key + ".processSessionId", out, data.getProcessSessionId());
 		writeStringEntry(key + ".status", out, data.getStatus() == null ? null : data.getStatus().name());
 		writeLongEntry(key + ".workItemId", out, data.getWorkItemId());
+		writeIntEntry(key + ".skippable", out, data.isSkipable() ? 1 : 0);
 	}
 
 	private TaskData readTaskData(String prefix, Map<String, Object> data) {
@@ -170,7 +171,7 @@ public class TaskSerializer extends GroupSerializerObjectArray<Task> {
 		l = (Long) data.get(prefix + ".faultContentId");
 		if (l != null) retval.setFaultContentId(l);
 		retval.setFaultName((String) data.get(prefix + ".faultName")); 
-		retval.setFaultType((String) data.get(prefix + ".faultTpe"));
+		retval.setFaultType((String) data.get(prefix + ".faultType"));
 		s = (String) data.get(prefix + ".outputAccessType");
 		if (s != null) retval.setOutputAccessType(AccessType.valueOf(s));
 		l = (Long) data.get(prefix + ".outputContentId");
@@ -178,8 +179,6 @@ public class TaskSerializer extends GroupSerializerObjectArray<Task> {
 		retval.setOutputType((String) data.get(prefix + ".outputType"));
 		l = (Long) data.get(prefix + ".parentId");
 		if (l != null) retval.setParentId(l);
-		s = (String) data.get(prefix + ".previousStatus");
-		if (s != null) retval.setPreviousStatus(Status.valueOf(s));
 		retval.setProcessId((String) data.get(prefix + ".processId"));
 		l = (Long) data.get(prefix + ".processInstanceId");
 		if (l != null) retval.setProcessInstanceId(l);
@@ -187,8 +186,18 @@ public class TaskSerializer extends GroupSerializerObjectArray<Task> {
 		if (l != null) retval.setProcessSessionId(l);
 		s = (String) data.get(prefix + ".status");
 		if (s != null) retval.setStatus(Status.valueOf(s));
+		s = (String) data.get(prefix + ".previousStatus");
+		if (s != null) { 
+			retval.setPreviousStatus(Status.valueOf(s));
+		} else {
+			retval.setPreviousStatus(null);
+		}
 		l = (Long) data.get(prefix + ".workItemId");
 		if (l != null) retval.setWorkItemId(l);
+		Integer i = (Integer) data.get(prefix + ".skippable");
+		if (i != null) {
+			retval.setSkipable(i > 0);
+		}
 		return retval;
 	}
 
