@@ -127,10 +127,8 @@ public class PersistentStatefulSessionTest extends AbstractBaseTest {
 	
 	private KieBase createCPKieBase(String... files) {
 		KieFileSystem kfs = KieServices.Factory.get().newKieFileSystem();
-		int index = 0;
 		for (String f : files) {
-			index++;
-			kfs.write("src/main/resources/r" + index + f.substring(f.indexOf(".")), ResourceFactory.newClassPathResource(f));
+			kfs.write(ResourceFactory.newClassPathResource(f));
 		}
     	KieBuilder kbuilder = KieServices.Factory.get().newKieBuilder(kfs);
         if ( kbuilder.getResults().hasMessages(Level.ERROR) ) {
@@ -371,28 +369,6 @@ public class PersistentStatefulSessionTest extends AbstractBaseTest {
         ksession.fireAllRules();
 
         ksession = KieServices.Factory.get().getStoreServices().loadKieSession( id, kbase, null, env );
-        processInstance = ksession.getProcessInstance( processInstance.getId() );
-        assertNull( processInstance );
-    }
-    
-    @Test
-    public void testPersistenceRuleSet() {
-    	KieBase kbase = createCPKieBase("RuleSetProcess.rf", "RuleSetRules.drl");
-
-    	KieSession ksession = KieServices.Factory.get().getStoreServices().newKieSession( kbase, null, env );
-        long id = ksession.getIdentifier();
-        
-        ksession.insert(new ArrayList<Object>());
-
-        ksession = KieServices.Factory.get().getStoreServices().loadKieSession( id, kbase, null, env );
-        ProcessInstance processInstance = ksession.startProcess( "org.drools.test.TestProcess" );
-
-        ksession = KieServices.Factory.get().getStoreServices().loadKieSession( id, kbase, null, env );
-        processInstance = ksession.getProcessInstance( processInstance.getId() );
-        assertNotNull( processInstance );
-
-        ksession = KieServices.Factory.get().getStoreServices().loadKieSession( id, kbase, null, env );
-        ksession.fireAllRules();
         processInstance = ksession.getProcessInstance( processInstance.getId() );
         assertNull( processInstance );
     }
