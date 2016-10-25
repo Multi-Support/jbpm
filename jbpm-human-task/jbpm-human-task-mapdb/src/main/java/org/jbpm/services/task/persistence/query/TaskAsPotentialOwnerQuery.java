@@ -29,7 +29,7 @@ public class TaskAsPotentialOwnerQuery implements MapDBQuery<List<TaskSummary>> 
 		@SuppressWarnings("unchecked")
 		List<String> groupIds = (List<String>) params.get("groupIds");
 		if (groupIds == null || groupIds.isEmpty()) {
-			groupIds = callback.getGroupsForUser(userId, null, null);
+			groupIds = callback.getGroupsForUser(userId);
 		}
 		tts.validateIsUser(userId);
 		Set<Long> values = new HashSet<>();
