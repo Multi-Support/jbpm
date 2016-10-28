@@ -29,12 +29,15 @@ public class TaskAsPotentialOwnerByGroupQuery implements MapDBQuery<List<TaskSum
 
 		Set<Long> valuesByStatus = new HashSet<>();
 		if (status != null) {
-			for (Status stat : status) {
-				MapDBQueryUtil.addAll(valuesByStatus, tts.getByStatus(), stat.name());
-			}
+            List<String> strStatus = MapDBQueryUtil.asStringStatus(status);
+		    for (Long value : values) {
+			    String taskStatus = tts.getTaskStatusById().get(value);
+			    if (taskStatus != null && strStatus.contains(taskStatus)) {
+				    valuesByStatus.add(value);
+			    }
+		    }
+		    values.retainAll(valuesByStatus); //and operation
 		}
-		
-		values.retainAll(valuesByStatus); //and operation
 		
 		final List<TaskSummary> retval = new ArrayList<TaskSummary>();
 		for (Long taskId : values) {

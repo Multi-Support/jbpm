@@ -42,11 +42,16 @@ public class SubTasksByPotentialOwnerQuery implements MapDBQuery<List<TaskSummar
 		ids.retainAll(idsByParent);
 		
 		Set<Long> idsByStatus = new HashSet<>();
-		for(Status s : status) {
-			MapDBQueryUtil.addAll(idsByStatus, tts.getByStatus(), s.name());
+		if (status != null) {
+            List<String> strStatus = MapDBQueryUtil.asStringStatus(status);
+		    for (Long value : ids) {
+			    String taskStatus = tts.getTaskStatusById().get(value);
+			    if (taskStatus != null && strStatus.contains(taskStatus)) {
+				    idsByStatus.add(value);
+			    }
+		    }
+		    ids.retainAll(idsByStatus); //and operation
 		}
-		
-		ids.retainAll(idsByStatus);
 		
 		List<TaskSummary> retval = new ArrayList<>(ids.size());
 		for (Long id : ids) {

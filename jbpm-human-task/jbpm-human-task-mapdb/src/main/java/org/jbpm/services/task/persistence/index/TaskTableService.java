@@ -19,6 +19,7 @@ import org.mapdb.Serializer;
 public class TaskTableService {
 
 	private static HTreeMap<String, long[]> byStatus = null;
+	private static HTreeMap<Long, String> taskStatusById = null;
 	private static HTreeMap<String, long[]> byActualOwner = null;
 	private static HTreeMap<String, long[]> byPotentialOwner = null;
 	private static HTreeMap<String, long[]> byRecipient = null;
@@ -38,6 +39,7 @@ public class TaskTableService {
 	private static synchronized void init(DB db) {
 		if (byId == null || byId.isClosed()) {
 			byStatus = db.hashMap("taskByStatus", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
+			taskStatusById = db.hashMap("taskStatusById", Serializer.LONG, Serializer.STRING).createOrOpen();
 			byActualOwner = db.hashMap("taskByStatus", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
 			byPotentialOwner = db.hashMap("taskByPotOwner", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
 			byRecipient = db.hashMap("taskByRecipient", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
@@ -70,6 +72,7 @@ public class TaskTableService {
 		byId.put(task.getId(), task);
 		String status = task.getTaskData().getStatus().name();
 		updateEntry(status, byStatus, taskId);
+		taskStatusById.put(taskId, status);
 		if (task.getPeopleAssignments().getTaskInitiator() != null) {
 			updateEntry(toString(task.getPeopleAssignments().getTaskInitiator()), byInitiator, taskId);
 		}
@@ -139,6 +142,7 @@ public class TaskTableService {
 	private void clearMappings(Long taskId) {
 		synchronized (byId) {
 			Task task = byId.remove(taskId);
+			taskStatusById.remove(taskId);
 			for (Object stat : byStatus.keySet()) {
 				String status = (String) stat;
 				byStatus.replace(status, removeId(taskId, byStatus.get(status)));
@@ -239,6 +243,10 @@ public class TaskTableService {
 	
 	public Map<String, long[]> getByStatus() {
 		return byStatus;
+	}
+	
+	public HTreeMap<Long, String> getTaskStatusById() {
+		return taskStatusById;
 	}
 	
 	public Map<Long, Task> getById() {

@@ -32,11 +32,16 @@ public class TasksByBizAdminStatusQuery implements MapDBQuery<List<TaskSummary>>
 		}
 		
 		Set<Long> valuesByStatus = new HashSet<>();
-		for (Status s : status) {
-			MapDBQueryUtil.addAll(valuesByStatus, tts.getByStatus(), s.name());
+		if (status != null) {
+            List<String> strStatus = MapDBQueryUtil.asStringStatus(status);
+		    for (Long value : values) {
+			    String taskStatus = tts.getTaskStatusById().get(value);
+			    if (taskStatus != null && strStatus.contains(taskStatus)) {
+				    valuesByStatus.add(value);
+			    }
+		    }
+		    values.retainAll(valuesByStatus); //and operation
 		}
-		
-		values.retainAll(valuesByStatus);
 		
 		List<TaskSummary> retval = new ArrayList<>(values.size());
 		for (Long id : values) {

@@ -24,11 +24,16 @@ public class TaskOwnedPotentialOwnersByTaskIdsQuery implements MapDBQuery<List<O
 		List<Status> status = Arrays.asList(Status.Created, Status.Ready, Status.Reserved, Status.InProgress, Status.Suspended);
 		
 		Set<Long> valuesByStatus = new HashSet<>();
-		for (Status s : status) {
-			MapDBQueryUtil.addAll(valuesByStatus, tts.getByStatus(), s.name());
+		if (status != null) {
+            List<String> strStatus = MapDBQueryUtil.asStringStatus(status);
+		    for (Long value : taskIds) {
+			    String taskStatus = tts.getTaskStatusById().get(value);
+			    if (taskStatus != null && strStatus.contains(taskStatus)) {
+				    valuesByStatus.add(value);
+			    }
+		    }
+		    taskIds.retainAll(valuesByStatus); //and operation
 		}
-		
-		valuesByStatus.retainAll(taskIds);
 		
 		List<Object[]> retval = new LinkedList<>();
 		

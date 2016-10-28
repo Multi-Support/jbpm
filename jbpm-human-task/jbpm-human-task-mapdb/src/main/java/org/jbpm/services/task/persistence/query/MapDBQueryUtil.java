@@ -1,7 +1,11 @@
 package org.jbpm.services.task.persistence.query;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import org.kie.api.task.model.Status;
 
 public class MapDBQueryUtil {
 
@@ -33,5 +37,13 @@ public class MapDBQueryUtil {
 				}
 			}
 		}
+	}
+
+	public static List<String> asStringStatus(List<Status> status) {
+		List<String> retval = new ArrayList<>(status.size());
+		for (Status s : status) {
+			retval.add(s.name());
+		}
+		return retval;
 	}
 }

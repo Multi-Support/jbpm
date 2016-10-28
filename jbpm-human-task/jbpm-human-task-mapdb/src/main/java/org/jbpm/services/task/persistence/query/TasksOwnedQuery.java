@@ -26,11 +26,16 @@ public class TasksOwnedQuery implements MapDBQuery<List<TaskSummary>> {
 		MapDBQueryUtil.addAll(idsByOwner, tts.getByActualOwner(), userId);
 		
 		Set<Long> idsByStatus = new HashSet<>();
-		for (Status s : status) {
-			MapDBQueryUtil.addAll(idsByStatus, tts.getByStatus(), s.name());
+		if (status != null) {
+            List<String> strStatus = MapDBQueryUtil.asStringStatus(status);
+		    for (Long value : idsByOwner) {
+			    String taskStatus = tts.getTaskStatusById().get(value);
+			    if (taskStatus != null && strStatus.contains(taskStatus)) {
+				    idsByStatus.add(value);
+			    }
+		    }
+		    idsByOwner.retainAll(idsByStatus); //and operation
 		}
-		
-		idsByOwner.retainAll(idsByStatus);
 		
 		List<TaskSummary> retval = new ArrayList<>(idsByOwner.size());
 		for (Long id : idsByOwner) {

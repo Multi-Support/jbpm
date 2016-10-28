@@ -39,11 +39,17 @@ public class TasksAsPotentialOwnerByGroupsWithExclusionQuery implements MapDBQue
 		MapDBQueryUtil.removeAll(values, tts.getByExclOwner(), userId);
 		
 		Set<Long> valuesByStatus = new HashSet<>();
-		for (Status s : status) {
-			MapDBQueryUtil.addAll(valuesByStatus, tts.getByStatus(), s.name());
+		if (status != null) {
+            List<String> strStatus = MapDBQueryUtil.asStringStatus(status);
+		    for (Long value : values) {
+			    String taskStatus = tts.getTaskStatusById().get(value);
+			    if (taskStatus != null && strStatus.contains(taskStatus)) {
+				    valuesByStatus.add(value);
+			    }
+		    }
+		    values.retainAll(valuesByStatus); //and operation
 		}
-		
-		values.retainAll(valuesByStatus);
+
 		
 		for (String owner : tts.getByActualOwner().keySet()) {
 			MapDBQueryUtil.addAll(values, tts.getByActualOwner(), owner);
