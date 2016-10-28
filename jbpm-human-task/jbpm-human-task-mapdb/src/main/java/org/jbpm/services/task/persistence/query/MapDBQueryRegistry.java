@@ -55,17 +55,7 @@ public class MapDBQueryRegistry {
         registry.put("UnescalatedStartDeadlinesByTaskIdForReminder", new UnescalatedDeadlinesByTaskIdQuery(false));
         registry.put("UnescalatedEndDeadlines", new UnescalatedDeadlinesQuery(true));
         registry.put("UnescalatedStartDeadlines", new UnescalatedDeadlinesQuery(false));
-		
-        registry.put("getAllAdminAuditTasksByUser", null);//TODO
-        registry.put("getAllAuditTasks", null);//TODO
-        registry.put("getAllAuditTasksByStatus", null);//TODO
-        registry.put("getAllAuditTasksByUser", null);//TODO
-        registry.put("getAllBAMTaskSummaries", null);//TODO
-        registry.put("getAllGroupAuditTasksByUser", null);//TODO
-        registry.put("getAllTasksEventsByProcessInstanceId", null);//TODO
-        registry.put("getAllTasksEvents", null);//TODO
-        
-	}
+	}		
 
 	public MapDBQuery<?> getQuery(String queryName) {
 		return registry.get(queryName);
