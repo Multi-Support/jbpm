@@ -437,8 +437,13 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public <T> T queryInTransaction(String queryName, Class<T> clazz) {
-		throw new UnsupportedOperationException("Not implemented yet");//TODO
+		MapDBQuery<?> query = MapDBQueryRegistry.getInstance().getQuery(queryName);
+		if (query == null) {
+			throw new UnsupportedOperationException("Query " + queryName + " not implemented");
+		}
+		return (T) query.execute(callback, new HashMap<>(), tts, false);
 	}
 
 	@Override

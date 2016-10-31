@@ -29,7 +29,7 @@ import org.kie.internal.task.api.model.Reassignment;
 
 public class EscalationImpl implements org.kie.internal.task.api.model.Escalation {
 
-    private Long                    id;
+    private long                    id;
     private String                  name;
     private List<BooleanExpression> constraints   = Collections.emptyList();
     private List<Notification>      notifications = Collections.emptyList();

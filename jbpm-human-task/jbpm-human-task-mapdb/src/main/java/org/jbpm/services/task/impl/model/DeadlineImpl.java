@@ -28,7 +28,7 @@ import org.kie.internal.task.api.model.Escalation;
 
 public class DeadlineImpl implements org.kie.internal.task.api.model.Deadline {
 
-    private Long id;
+    private long id;
     private List<I18NText> documentation = Collections.emptyList();
     private Date date;
     private List<Escalation> escalations = Collections.emptyList();
@@ -119,9 +119,7 @@ public class DeadlineImpl implements org.kie.internal.task.api.model.Deadline {
         result = prime * result + CollectionUtils.hashCode(documentation);
         result = prime * result + CollectionUtils.hashCode(escalations);
         result = prime * result + (isEscalated() ? 1231 : 1237);
-        if (id != null) {
-        	result = prime * result + (int) (id ^ (id >>> 32));
-        }
+    	result = prime * result + (int) (id ^ (id >>> 32));
         return result;
     }
 

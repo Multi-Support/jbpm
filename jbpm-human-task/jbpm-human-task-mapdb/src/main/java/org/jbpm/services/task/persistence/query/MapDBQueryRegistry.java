@@ -18,6 +18,7 @@ public class MapDBQueryRegistry {
 	}
 	
 	private void init() {
+		registry.put("AllTasks", new AllTasksQuery());
 		registry.put("AttachmentsByTaskId", new AttachmentsByTaskIdQuery());
         registry.put("TasksByStatus", new TasksByStatusQuery());
         registry.put("TasksByStatusByProcessId", new TasksByStatusAndProcessInstanceIdQuery());
