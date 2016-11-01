@@ -45,9 +45,4 @@ public class TaskQueryServiceMapDBTest extends TaskQueryServiceBaseTest {
 	public void testGetTasksByStatusByProcessIdByTaskName() {
 		//do nothing because Query elements are not created
 	}
-	
-	@Override
-    public void testGetTasksAssignedAsPotentialOwnerWithUserGroupsLangOffsetCountTwoTasksOneMaxResult() {
-		//TODO review later
-	}
 }
