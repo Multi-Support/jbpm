@@ -25,7 +25,7 @@ import java.io.ObjectOutput;
 
 public class EmailNotificationHeaderImpl implements org.kie.internal.task.api.model.EmailNotificationHeader {
     
-    private Long   id;
+    private long   id;
     private String language;    
     private String replyTo;
     private String from;

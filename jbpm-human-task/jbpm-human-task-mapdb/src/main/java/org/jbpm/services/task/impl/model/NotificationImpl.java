@@ -29,7 +29,7 @@ import org.kie.internal.task.api.model.NotificationType;
 
 public class NotificationImpl implements org.kie.internal.task.api.model.Notification  {
     
-    private Long                             id;
+    private long                             id;
     private List<I18NText>                   documentation = Collections.emptyList();
     private int                              priority;
     private List<OrganizationalEntity>       recipients = Collections.emptyList();

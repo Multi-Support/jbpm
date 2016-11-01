@@ -24,6 +24,12 @@ public class TasksAsPotentialOwnerByGroupsQuery implements MapDBQuery<List<Objec
 		this.optional = optional;
 	}
 
+	/* select t.id, potentialOwners.id
+       from TaskImpl t join t.peopleAssignments.potentialOwners potentialOwners        
+       where t.archived = 0 and t.taskData.actualOwner = null and          
+       t.taskData.status in ('Created', 'Ready', 'Reserved', 'InProgress', 'Suspended') and  
+       potentialOwners.id in (:groupIds)
+     */
 	@Override
 	public List<Object[]> execute(UserGroupCallback callback,
 			Map<String, Object> params, TaskTableService tts,
@@ -53,11 +59,8 @@ public class TasksAsPotentialOwnerByGroupsQuery implements MapDBQuery<List<Objec
 		    }
 		    values.retainAll(valuesByStatus); //and operation
 		}
-
 		
-		for (String owner : tts.getByActualOwner().keySet()) {
-			MapDBQueryUtil.removeAll(values, tts.getByActualOwner(), owner);
-		}
+		cleanTasksWithActualOwners(values, tts.getById());
 		
 		List<Object[]> retval = new LinkedList<>();
 		
@@ -86,4 +89,15 @@ public class TasksAsPotentialOwnerByGroupsQuery implements MapDBQuery<List<Objec
 					|| expDate.equals(task.getTaskData().getExpirationTime()));
 		}
 	}
+	
+    private void cleanTasksWithActualOwners(Set<Long> ids, Map<Long, Task> tasks) {
+        List<Long> toRemove = new LinkedList<>();
+        for (Long id : ids) {
+                Task t = tasks.get(id);
+                if (t.getTaskData().getActualOwner() != null) {
+                        toRemove.add(id);
+                }
+        }
+        ids.removeAll(toRemove);
+    }
 }

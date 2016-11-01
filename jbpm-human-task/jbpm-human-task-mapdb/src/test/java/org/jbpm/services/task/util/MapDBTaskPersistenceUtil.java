@@ -4,7 +4,9 @@ import org.drools.persistence.TransactionManager;
 import org.drools.persistence.jta.JtaTransactionManagerFactory;
 import org.jbpm.services.task.commands.TaskCommandExecutorImpl;
 import org.jbpm.services.task.events.TaskEventSupport;
+import org.jbpm.services.task.identity.DefaultUserInfo;
 import org.jbpm.services.task.identity.MvelUserGroupCallbackImpl;
+import org.jbpm.services.task.impl.TaskDeadlinesServiceImpl;
 import org.jbpm.services.task.impl.command.CommandBasedTaskService;
 import org.jbpm.services.task.persistence.MapDBTaskPersistenceContextManager;
 import org.jbpm.services.task.persistence.TaskTransactionInterceptor;
@@ -19,6 +21,9 @@ public class MapDBTaskPersistenceUtil {
         if (env.get(EnvironmentName.TASK_USER_GROUP_CALLBACK) == null) {
         	env.set(EnvironmentName.TASK_USER_GROUP_CALLBACK, new MvelUserGroupCallbackImpl(true));
         }
+        if (env.get(EnvironmentName.TASK_USER_INFO) == null) {
+        	env.set(EnvironmentName.TASK_USER_INFO, new DefaultUserInfo(true));
+        }
 		TransactionManager txm = new JtaTransactionManagerFactory().newTransactionManager(env);
 		env.set(EnvironmentName.TRANSACTION_MANAGER, txm);
         MapDBTaskPersistenceContextManager tpcm = new MapDBTaskPersistenceContextManager(env);
@@ -26,6 +31,9 @@ public class MapDBTaskPersistenceUtil {
         //taskEventSupport.addEventListener(new BAMTaskEventListener(true));
         TaskCommandExecutorImpl commandExecutor = new TaskCommandExecutorImpl(env, taskEventSupport);
         commandExecutor.addInterceptor(new TaskTransactionInterceptor(env));
+        if (TaskDeadlinesServiceImpl.getInstance() == null) {
+        	TaskDeadlinesServiceImpl.initialize(commandExecutor);
+        }
         return new CommandBasedTaskService(commandExecutor, taskEventSupport);
 	}
 }

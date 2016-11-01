@@ -55,6 +55,6 @@ public class TOWPSBEDBSDQuery implements MapDBQuery<List<TaskSummary>> {
 
 	private boolean matchesCondition(Date date, Task task) {
 		Date expTime = task.getTaskData().getExpirationTime();
-		return date != null && date.before(expTime);
+		return date != null && date.after(expTime);
 	}
 }

@@ -1,14 +1,17 @@
 package org.jbpm.services.task.persistence.index;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 import org.jbpm.services.task.persistence.OrganizationalEntitySerializer;
+import org.jbpm.services.task.persistence.TaskDeadlineSerializer;
 import org.jbpm.services.task.persistence.TaskSerializer;
 import org.kie.api.task.model.OrganizationalEntity;
 import org.kie.api.task.model.Task;
 import org.kie.api.task.model.User;
 import org.kie.internal.task.api.model.Deadline;
+import org.kie.internal.task.api.model.Deadlines;
 import org.kie.internal.task.api.model.InternalPeopleAssignments;
 import org.kie.internal.task.api.model.InternalTask;
 import org.mapdb.BTreeMap;
@@ -34,7 +37,9 @@ public class TaskTableService {
 	private static HTreeMap<Long, long[]> byDeadlineId = null;
 	private static HTreeMap<Long, Task> byId = null;
 	private static HTreeMap<Long, Task> byArchived = null;
+	
 	private static BTreeMap<String, OrganizationalEntity> orgEntities = null;
+	private static BTreeMap<Long, Deadline> deadlines = null;
 	
 	private static synchronized void init(DB db) {
 		if (byId == null || byId.isClosed()) {
@@ -48,6 +53,7 @@ public class TaskTableService {
 			byExclOwner = db.hashMap("taskByExclOwner", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
 			byBizAdmin = db.hashMap("taskByBizAdmin", Serializer.STRING, Serializer.LONG_ARRAY).createOrOpen();
 			byId = db.hashMap("taskById", Serializer.LONG, new TaskSerializer()).createOrOpen();
+			deadlines = db.treeMap("deadlines", Serializer.LONG, new TaskDeadlineSerializer()).createOrOpen();
 			byArchived = db.hashMap("taskByArchived", Serializer.LONG, new TaskSerializer()).createOrOpen();
 			byParentId = db.hashMap("taskByParentId", Serializer.LONG, Serializer.LONG_ARRAY).createOrOpen();
 			byWorkItemId = db.hashMap("taskByWorkItemId", Serializer.LONG, Serializer.LONG_ARRAY).createOrOpen();

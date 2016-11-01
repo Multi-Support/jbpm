@@ -40,7 +40,9 @@ import org.kie.api.task.model.User;
 import org.kie.internal.task.api.TaskPersistenceContext;
 import org.kie.internal.task.api.model.ContentData;
 import org.kie.internal.task.api.model.Deadline;
+import org.kie.internal.task.api.model.Deadlines;
 import org.kie.internal.task.api.model.FaultData;
+import org.kie.internal.task.api.model.InternalTask;
 import org.kie.internal.task.api.model.InternalTaskData;
 import org.mapdb.Atomic;
 import org.mapdb.BTreeMap;
@@ -69,6 +71,7 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 	private BTreeMap<String, OrganizationalEntity> orgEntities;
 
 	private Atomic.Long nextId;
+	private Atomic.Long nextDeadlineId;
 
 	private UserGroupCallback callback;
 
@@ -99,6 +102,7 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 				Serializer.LONG,
 				new TaskDeadlineSerializer()).createOrOpen();
 		nextId = db.atomicLong("taskId").createOrOpen();
+		nextDeadlineId = db.atomicLong("deadlineId").createOrOpen();
 	}
 
 	@Override
@@ -126,12 +130,36 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 			if (task.getId() == null || task.getId() <= 0) {
 				((TaskImpl) task).setId(nextId.incrementAndGet());
 			}
+			setDeadlinesId((TaskImpl) task);
 			TaskTransactionHelper.addToUpdatableSet(txm, (MapDBElement) task);
 		}
 		tts.update(task);
 		/*TaskKey key = new TaskKey(task);
 		this.tasks.put(key, task);*/
         return task;
+	}
+
+	private void setDeadlinesId(TaskImpl task) {
+		Deadlines dl = task.getDeadlines();
+		if (dl != null) {
+			List<Deadline> startDeadlines = dl.getStartDeadlines();
+			if (startDeadlines != null) {
+				for (Deadline d : startDeadlines) {
+					if (d.getId() <= 0) {
+						d.setId(nextDeadlineId.incrementAndGet());
+					}
+				}
+			}
+			List<Deadline> endDeadlines = dl.getEndDeadlines();
+			if (endDeadlines != null) {
+				for (Deadline d : endDeadlines) {
+					if (d.getId() <= 0) {
+						d.setId(nextDeadlineId.incrementAndGet());
+					}
+				}
+			}
+		}
+		
 	}
 
 	@Override
@@ -385,6 +413,28 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 
 	@Override
 	public Deadline findDeadline(Long deadlineId) {
+		long[] taskIds = tts.getByDeadlineId().get(deadlineId);
+		if (taskIds != null) {
+			for (long taskId : taskIds) {
+				InternalTask task = (InternalTask) tts.getById().get(taskId);
+				if (task.getDeadlines() != null) {
+					if (task.getDeadlines().getStartDeadlines() != null) {
+						for (Deadline d : task.getDeadlines().getStartDeadlines()) {
+							if (deadlineId.equals(d.getId())) {
+								return d;
+							}
+						}
+					}
+					if (task.getDeadlines().getEndDeadlines() != null) {
+						for (Deadline d : task.getDeadlines().getEndDeadlines()) {
+							if (deadlineId.equals(d.getId())) {
+								return d;
+							}
+						}
+					}
+				}
+			}
+		}
 		return this.deadlines.getOrDefault(deadlineId, null);
 	}
 

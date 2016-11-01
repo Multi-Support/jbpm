@@ -22,46 +22,32 @@ import org.jbpm.services.task.util.MapDBTaskPersistenceUtil;
 import org.junit.After;
 import org.junit.Before;
 import org.kie.api.runtime.Environment;
-import org.kie.internal.utils.ChainedProperties;
-import org.kie.internal.utils.ClassLoaderUtil;
-import org.subethamail.wiser.Wiser;
 
-public class TaskReminderMapDBTest extends TaskReminderBaseTest {
+
+public class TaskQueryServiceMapDBTest extends TaskQueryServiceBaseTest {
 
     private Map<String, Object> context;
 
-    @Before
-    public void setup() {
-        final ChainedProperties props = new ChainedProperties(
-        		"email.conf", 
-        		ClassLoaderUtil.getClassLoader(null, getClass(), false));
-
-        wiser = new Wiser();
-        wiser.setHostname(props.getProperty("mail.smtp.host", "localhost"));
-        wiser.setPort(Integer.parseInt(props.getProperty("mail.smtp.port", "2345")));
-        wiser.getServer().setConnectionTimeout(600000);
-        wiser.start();
-        try {
-            Thread.sleep(1000);
-        } catch (Throwable t) {
-            // Do nothing
-        }
+	@Before
+	public void setup() {
 		context = MapDBProcessPersistenceUtil.setupMapDB();
 		Environment env = MapDBProcessPersistenceUtil.createEnvironment(context);
 		this.taskService = MapDBTaskPersistenceUtil.createTaskService(env);
-    }
-
-    @After
-    public void clean() {
-        if (wiser != null) {
-            wiser.stop();
-            try {
-                Thread.sleep(1000);
-            } catch (Throwable t) {
-                // Do nothing
-            }
-        }
-        super.tearDown();
+	}
+	
+	@After
+	public void clean() {
+		super.tearDown();
 		MapDBProcessPersistenceUtil.cleanUp(context);
-    }
+	}
+	
+	@Override
+	public void testGetTasksByStatusByProcessIdByTaskName() {
+		//do nothing because Query elements are not created
+	}
+	
+	@Override
+    public void testGetTasksAssignedAsPotentialOwnerWithUserGroupsLangOffsetCountTwoTasksOneMaxResult() {
+		//TODO review later
+	}
 }

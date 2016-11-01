@@ -30,7 +30,7 @@ import org.kie.api.runtime.Environment;
  *
  *
  */
-@org.junit.Ignore("For now, we're keeping it commented out")//TODO NEXT remove this
+//@org.junit.Ignore("For now, we're keeping it commented out")//TODO NEXT remove this
 public class MapDBDeadlinesLocalTest extends DeadlinesLocalTest {
 
 	protected Map<String, Object> context;

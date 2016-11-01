@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -13,9 +14,12 @@ import org.jbpm.services.task.impl.model.CommentImpl;
 import org.jbpm.services.task.impl.model.DeadlineImpl;
 import org.jbpm.services.task.impl.model.DeadlinesImpl;
 import org.jbpm.services.task.impl.model.DelegationImpl;
+import org.jbpm.services.task.impl.model.EmailNotificationHeaderImpl;
+import org.jbpm.services.task.impl.model.EmailNotificationImpl;
 import org.jbpm.services.task.impl.model.EscalationImpl;
 import org.jbpm.services.task.impl.model.GroupImpl;
 import org.jbpm.services.task.impl.model.I18NTextImpl;
+import org.jbpm.services.task.impl.model.LanguageImpl;
 import org.jbpm.services.task.impl.model.NotificationImpl;
 import org.jbpm.services.task.impl.model.PeopleAssignmentsImpl;
 import org.jbpm.services.task.impl.model.ReassignmentImpl;
@@ -36,13 +40,17 @@ import org.kie.internal.task.api.model.AllowedToDelegate;
 import org.kie.internal.task.api.model.BooleanExpression;
 import org.kie.internal.task.api.model.Deadline;
 import org.kie.internal.task.api.model.Delegation;
+import org.kie.internal.task.api.model.EmailNotification;
+import org.kie.internal.task.api.model.EmailNotificationHeader;
 import org.kie.internal.task.api.model.Escalation;
 import org.kie.internal.task.api.model.InternalAttachment;
 import org.kie.internal.task.api.model.InternalComment;
 import org.kie.internal.task.api.model.InternalPeopleAssignments;
 import org.kie.internal.task.api.model.InternalTask;
 import org.kie.internal.task.api.model.InternalTaskData;
+import org.kie.internal.task.api.model.Language;
 import org.kie.internal.task.api.model.Notification;
+import org.kie.internal.task.api.model.NotificationType;
 import org.kie.internal.task.api.model.Reassignment;
 import org.kie.internal.task.api.model.SubTasksStrategy;
 import org.mapdb.DataInput2;
@@ -72,6 +80,7 @@ public class TaskSerializer extends GroupSerializerObjectArray<Task> {
 			writeStringEntry("formName", out, task.getFormName());
 			writeLongEntry("id", out, task.getId());
 			writeStringEntry("name", out, task.getName());
+			writeI18NTexts("names", out, task.getNames());
 			writePeopleAssignments("peopleAssignments", out, (InternalPeopleAssignments) task.getPeopleAssignments());
 			writeIntEntry("priority", out, task.getPriority());
 			writeStringEntry("subject", out, task.getSubject());
@@ -103,6 +112,7 @@ public class TaskSerializer extends GroupSerializerObjectArray<Task> {
 			task.setId(l);
 		}
 		task.setName((String) data.get("name"));
+		task.setNames(readI18NTexts("names", data));
 		task.setPeopleAssignments(readPeopleAssignments("peopleAssignments", data));
 		Integer i = (Integer) data.get("priority");
 		if (i != null) {
@@ -456,10 +466,14 @@ public class TaskSerializer extends GroupSerializerObjectArray<Task> {
 				writeI18NTexts(key + "[" + index + "].descriptions", out, not.getDescriptions());
 				writeI18NTexts(key + "[" + index + "].documentation", out, not.getDocumentation());
 				writeLongEntry(key + "[" + index + "].id", out, not.getId());
+				writeStringEntry(key + "[" + index + "].notificationType", out, not.getNotificationType() == null ? null : not.getNotificationType().name());
 				writeI18NTexts(key + "[" + index + "].names", out, not.getNames());
 				writeIntEntry(key + "[" + index + "].priority", out, not.getPriority());
 				writeOrgEntities(key + "[" + index + "].recipients", out, not.getRecipients());
 				writeI18NTexts(key + "[" + index + "].subjects", out, not.getSubjects());
+				if (not instanceof EmailNotification) {
+					writeEmailHeaders(key + "[" + index + "].emailHeaders", out, ((EmailNotification) not).getEmailHeaders());
+				}
 			}
 		}
 	}
@@ -472,6 +486,12 @@ public class TaskSerializer extends GroupSerializerObjectArray<Task> {
 		List<Notification> retval = new ArrayList<>(size);
 		for (int index = 0; index < size; index++) {
 			NotificationImpl not = new NotificationImpl();
+			if (data.get(prefix+ "[" + index + "].notificationType") != null) {
+				NotificationType type = NotificationType.valueOf((String) data.get(prefix+ "[" + index + "].notificationType"));
+				if (type == NotificationType.Email) {
+					not = new EmailNotificationImpl();
+				}
+			}
 			not.setBusinessAdministrators(readOrgEntities(prefix + "[" + index + "].businessAdministrators", data));
 			not.setDescriptions(readI18NTexts(prefix+ "[" + index + "].descriptions", data));
 			not.setDocumentation(readI18NTexts(prefix + "[" + index + "].documentation", data));
@@ -483,7 +503,60 @@ public class TaskSerializer extends GroupSerializerObjectArray<Task> {
 			not.setPriority((Integer) data.get(prefix + "[" + index + "].priority"));
 			not.setRecipients(readOrgEntities(prefix + "[" + index + "].recipients", data));
 			not.setSubjects(readI18NTexts(prefix + "[" + index + "].subjects", data));
+			if (not instanceof EmailNotificationImpl) {
+				EmailNotificationImpl emnot = (EmailNotificationImpl) not;
+				emnot.setEmailHeaders(readEmailHeaders(prefix + "[" + index + "].emailHeaders", data));
+			}
 			retval.add(not);
+		}
+		return retval;
+	}
+
+	private static void writeEmailHeaders(String key, DataOutput2 out,
+			Map<? extends Language, ? extends EmailNotificationHeader> emailHeaders) throws IOException {
+		if (emailHeaders == null) {
+			return;
+		}
+		StringBuilder keysString = new StringBuilder();
+		for (Iterator<? extends Language> iter = emailHeaders.keySet().iterator(); iter.hasNext(); ) {
+			Language l = iter.next();
+			keysString.append(l.getMapkey());
+			if (iter.hasNext()) {
+				keysString.append(",");
+			}
+		}
+		writeStringEntry(key + ".keys", out, keysString.toString());
+		for (Map.Entry<? extends Language, ? extends EmailNotificationHeader> entry : emailHeaders.entrySet()) {
+			String lang = entry.getKey().getMapkey();
+			EmailNotificationHeader header = entry.getValue();
+			writeStringEntry(key + "[" + lang + "].body", out, header.getBody());
+			writeStringEntry(key + "[" + lang + "].from", out, header.getFrom());
+			writeLongEntry(key + "[" + lang + "].id", out, header.getId());
+			writeStringEntry(key + "[" + lang + "].language", out, header.getLanguage());
+			writeStringEntry(key + "[" + lang + "].replyTo", out, header.getReplyTo());
+			writeStringEntry(key + "[" + lang + "].subject", out, header.getSubject());
+		}
+	}
+
+	
+	private static Map<Language, EmailNotificationHeader> readEmailHeaders(
+			String prefix, Map<String, Object> data) {
+		Map<Language, EmailNotificationHeader> retval = new HashMap<>();
+		String keys = (String) data.get(prefix + ".keys");
+		if (keys == null) {
+			return retval;
+		}
+		String[] actualKeys = keys.split(",");
+		for (String key : actualKeys) {
+			Language lang = new LanguageImpl(key);
+			EmailNotificationHeaderImpl header = new EmailNotificationHeaderImpl();
+			header.setBody((String) data.get(prefix + "[" + key + "].body"));
+			header.setFrom((String) data.get(prefix + "[" + key + "].from"));
+			header.setId((Long) data.get(prefix + "[" + key + "].id"));
+			header.setLanguage((String) data.get(prefix + "[" + key + "].language"));
+			header.setReplyTo((String) (String) data.get(prefix + "[" + key + "].replyTo"));
+			header.setSubject((String) (String) data.get(prefix + "[" + key + "].subject"));
+			retval.put(lang, header);
 		}
 		return retval;
 	}

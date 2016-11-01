@@ -1,6 +1,7 @@
 package org.jbpm.services.task.persistence.query;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -17,7 +18,7 @@ public class TaskSummariesByIdsQuery implements MapDBQuery<List<TaskSummary>> {
 			Map<String, Object> params, TaskTableService tts,
 			boolean singleResult) {
 		@SuppressWarnings("unchecked")
-		List<Long> taskIds = (List<Long>) params.get("taskIds");
+		Collection<Long> taskIds = (Collection<Long>) params.get("taskIds");
 		List<TaskSummary> retval = new ArrayList<>();
 		if (taskIds != null) {
 			for (Long taskId : taskIds) {
