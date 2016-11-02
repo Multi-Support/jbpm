@@ -179,7 +179,7 @@ public class TaskImpl implements InternalTask, MapDBElement {
         return id;
     }
 
-    public void setId(long id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
@@ -198,15 +198,15 @@ public class TaskImpl implements InternalTask, MapDBElement {
         }
     }
     
-    public int getVersion() {
+    public Integer getVersion() {
         return this.version;
     }
 
-    public int getPriority() {
+    public Integer getPriority() {
         return priority;
     }
 
-    public void setPriority(int priority) {
+    public void setPriority(Integer priority) {
         this.priority = priority;
     }
 
