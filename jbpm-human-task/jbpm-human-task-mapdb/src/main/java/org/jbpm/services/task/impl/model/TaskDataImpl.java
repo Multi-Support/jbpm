@@ -52,13 +52,16 @@ public class TaskDataImpl implements InternalTaskData {
     private AccessType documentAccessType;
     private String documentType;
     private long documentContentId = -1;
+    private byte[] documentContent;
     private AccessType outputAccessType;
     private String outputType;
     private long outputContentId = -1;
+    private byte[] outputContent;
     private String faultName;
     private AccessType faultAccessType;
     private String faultType;
     private long faultContentId = -1;
+    private byte[] faultContent;
     private long parentId = -1;
     private String processId;
     private String deploymentId;
@@ -483,6 +486,7 @@ public class TaskDataImpl implements InternalTaskData {
         setDocumentContentId(documentID);
         setDocumentAccessType(documentConentData.getAccessType());
         setDocumentType(documentConentData.getType());
+        setDocumentContent(documentConentData.getContent());
     }
 
     public AccessType getDocumentAccessType() {
@@ -520,6 +524,7 @@ public class TaskDataImpl implements InternalTaskData {
         setOutputContentId(outputContentId);
         setOutputAccessType(outputContentData.getAccessType());
         setOutputType(outputContentData.getType());
+        setOutputContent(outputContentData.getContent());
     }
 
     public AccessType getOutputAccessType() {
@@ -558,6 +563,7 @@ public class TaskDataImpl implements InternalTaskData {
         setFaultAccessType(faultData.getAccessType());
         setFaultType(faultData.getType());
         setFaultName(faultData.getFaultName());
+        setFaultContent(faultData.getContent());
     }
 
     public String getFaultName() {
@@ -687,6 +693,30 @@ public class TaskDataImpl implements InternalTaskData {
     public void setParentId(long parentId) {
         this.parentId = parentId;
     }
+    
+    public void setDocumentContent(byte[] documentContent) {
+		this.documentContent = documentContent;
+	}
+    
+    public byte[] getDocumentContent() {
+		return documentContent;
+	}
+    
+    public void setFaultContent(byte[] faultContent) {
+		this.faultContent = faultContent;
+	}
+    
+    public byte[] getFaultContent() {
+		return faultContent;
+	}
+    
+    public void setOutputContent(byte[] outputContent) {
+		this.outputContent = outputContent;
+	}
+    
+    public byte[] getOutputContent() {
+		return outputContent;
+	}
 
     @Override
     public int hashCode() {
