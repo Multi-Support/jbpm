@@ -45,7 +45,7 @@ public class TasksByStatusAndProcessInstanceIdQuery implements MapDBQuery<List<T
 				retval.add(new TaskSummaryImpl(task));
 			}
 		}
-		return retval;
+		return MapDBQueryUtil.paging(params, retval);
 	}
 
 	private boolean matchesCondition(Task task, String taskName) {

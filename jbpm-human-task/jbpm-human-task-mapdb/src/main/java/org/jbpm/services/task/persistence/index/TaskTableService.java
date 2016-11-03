@@ -1,7 +1,6 @@
 package org.jbpm.services.task.persistence.index;
 
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 
 import org.jbpm.services.task.persistence.OrganizationalEntitySerializer;
@@ -11,7 +10,6 @@ import org.kie.api.task.model.OrganizationalEntity;
 import org.kie.api.task.model.Task;
 import org.kie.api.task.model.User;
 import org.kie.internal.task.api.model.Deadline;
-import org.kie.internal.task.api.model.Deadlines;
 import org.kie.internal.task.api.model.InternalPeopleAssignments;
 import org.kie.internal.task.api.model.InternalTask;
 import org.mapdb.BTreeMap;
@@ -147,8 +145,13 @@ public class TaskTableService {
 
 	private void clearMappings(Long taskId) {
 		synchronized (byId) {
-			Task task = byId.remove(taskId);
-			taskStatusById.remove(taskId);
+			Task task = null;
+			if (byId.containsKey(taskId)) {
+				task = byId.remove(taskId);
+			}
+			if (taskStatusById.containsKey(taskId)) {
+				taskStatusById.remove(taskId);
+			}
 			for (Object stat : byStatus.keySet()) {
 				String status = (String) stat;
 				byStatus.replace(status, removeId(taskId, byStatus.get(status)));

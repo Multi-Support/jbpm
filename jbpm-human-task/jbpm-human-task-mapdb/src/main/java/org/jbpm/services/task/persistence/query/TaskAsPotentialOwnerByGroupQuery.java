@@ -55,7 +55,7 @@ public class TaskAsPotentialOwnerByGroupQuery implements MapDBQuery<List<TaskSum
 				}
 			}
 		}
-		return retval;
+		return MapDBQueryUtil.paging(params, retval);
 	}
 
 	private void cleanTasksWithActualOwners(Set<Long> ids, Map<Long, Task> tasks) {

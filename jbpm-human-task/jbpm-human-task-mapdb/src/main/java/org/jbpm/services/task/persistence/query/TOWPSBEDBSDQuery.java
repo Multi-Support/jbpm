@@ -50,7 +50,7 @@ public class TOWPSBEDBSDQuery implements MapDBQuery<List<TaskSummary>> {
 				}
 			}
 		}
-		return retval;
+		return MapDBQueryUtil.paging(params, retval);
 	}
 
 	private boolean matchesCondition(Date date, Task task) {

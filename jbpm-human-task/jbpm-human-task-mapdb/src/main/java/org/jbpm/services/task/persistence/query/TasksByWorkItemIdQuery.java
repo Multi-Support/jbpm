@@ -28,6 +28,6 @@ public class TasksByWorkItemIdQuery implements MapDBQuery<List<Task>> {
 				}
 			}
 		}
-		return retval;
+		return MapDBQueryUtil.paging(params, retval);
 	}
 }

@@ -30,6 +30,6 @@ public class TaskAsRecipientQuery implements MapDBQuery<List<TaskSummary>> {
 				}
 			}
 		}
-		return retval;
+		return MapDBQueryUtil.paging(params, retval);
 	}
 }

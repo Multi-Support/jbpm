@@ -38,6 +38,24 @@ public class MapDBQueryUtil {
 			}
 		}
 	}
+	
+	public static <T> List<T> paging(Map<String, Object> params, List<T> fullList) {
+		if (params == null) {
+			return fullList;
+		}
+		Number maxResults = (Number) params.get("maxResults");
+		Number firstResult = (Number) params.get("firstResult");
+		if (firstResult == null) {
+			firstResult = 0;
+		}
+		if (maxResults == null) {
+			maxResults = fullList.size() - firstResult.intValue();
+		}
+		if (maxResults.intValue() > fullList.size()) {
+			maxResults = fullList.size();
+		}
+		return fullList.subList(firstResult.intValue(), maxResults.intValue());
+	}
 
 	public static List<String> asStringStatus(List<Status> status) {
 		List<String> retval = new ArrayList<>(status.size());

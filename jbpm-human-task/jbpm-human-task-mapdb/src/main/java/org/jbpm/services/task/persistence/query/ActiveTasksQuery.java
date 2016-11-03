@@ -34,7 +34,7 @@ public class ActiveTasksQuery implements MapDBQuery<List<Task>> {
 				}
 			}
 		}
-		return retval;
+		return MapDBQueryUtil.paging(params, retval);
 	}
 
 }

@@ -14,7 +14,8 @@ public class AllTasksQuery implements MapDBQuery<List<Task>> {
 	public List<Task> execute(UserGroupCallback callback,
 			Map<String, Object> params, TaskTableService tts,
 			boolean singleResult) {
-		return new ArrayList<>(tts.getById().values());
+		List<Task> retval = new ArrayList<>(tts.getById().values());
+		return MapDBQueryUtil.paging(params, retval);
 	}
 
 }

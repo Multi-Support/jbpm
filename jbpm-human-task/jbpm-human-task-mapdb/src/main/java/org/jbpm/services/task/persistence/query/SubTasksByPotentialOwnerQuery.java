@@ -62,6 +62,6 @@ public class SubTasksByPotentialOwnerQuery implements MapDBQuery<List<TaskSummar
 				}
 			}
 		}
-		return retval;
+		return MapDBQueryUtil.paging(params, retval);
 	}
 }

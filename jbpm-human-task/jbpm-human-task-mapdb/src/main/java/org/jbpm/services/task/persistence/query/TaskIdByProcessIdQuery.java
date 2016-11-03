@@ -18,7 +18,7 @@ public class TaskIdByProcessIdQuery implements MapDBQuery<List<Long>> {
 		Long processInstanceId = (Long) params.get("processInstanceId");
 		Set<Long> values = new HashSet<>();
 		MapDBQueryUtil.addAll(values, tts.getByProcessInstanceId(), processInstanceId);
-		return new ArrayList<>(values);
+		return MapDBQueryUtil.paging(params, new ArrayList<>(values));
 	}
 
 }

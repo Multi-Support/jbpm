@@ -22,7 +22,7 @@ public class ArchivedTaskQuery implements MapDBQuery<List<TaskSummary>> {
 		for (Task task : colOfTasks) {
 			retval.add(new TaskSummaryImpl(task));
 		}
-		return retval;
+		return MapDBQueryUtil.paging(params, retval);
 	}
 
 }

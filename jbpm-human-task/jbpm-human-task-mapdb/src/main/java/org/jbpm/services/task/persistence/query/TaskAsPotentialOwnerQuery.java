@@ -3,7 +3,6 @@ package org.jbpm.services.task.persistence.query;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -66,16 +65,6 @@ public class TaskAsPotentialOwnerQuery implements MapDBQuery<List<TaskSummary>> 
 		    values.retainAll(valuesByStatus); //and operation
 		}
 
-		if (params.get("maxResults") != null) {
-			Number maxResults = (Number) params.get("maxResults");
-			Set<Long> actualValues = new HashSet<>();
-			Iterator<Long> iter = values.iterator();
-			while (actualValues.size() < maxResults.intValue() && iter.hasNext()) {
-				actualValues.add(iter.next());
-			}
-			values = actualValues;
-		}
-		
 		final List<TaskSummary> retval = new ArrayList<TaskSummary>();
 		for (Long taskId : values) {
 			if (tts.getById().containsKey(taskId)) {
@@ -85,6 +74,6 @@ public class TaskAsPotentialOwnerQuery implements MapDBQuery<List<TaskSummary>> 
 				}
 			}
 		}
-		return retval;
+		return MapDBQueryUtil.paging(params, retval);
 	}
 }

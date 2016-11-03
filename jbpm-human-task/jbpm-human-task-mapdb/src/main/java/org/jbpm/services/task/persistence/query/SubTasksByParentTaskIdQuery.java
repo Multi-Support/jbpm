@@ -48,7 +48,7 @@ from TaskImpl t, OrganizationalEntityImpl potentialOwners where
 				}
 			}
 		}
-		return retval;
+		return MapDBQueryUtil.paging(params, retval);
 	}
 
 }

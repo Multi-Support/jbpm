@@ -47,6 +47,6 @@ public class TaskOwnedPotentialOwnersByTaskIdsQuery implements MapDBQuery<List<O
 				}
 			}
 		}
-		return retval;
+		return MapDBQueryUtil.paging(params, retval);
 	}
 }

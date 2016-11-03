@@ -39,7 +39,7 @@ public class UnescalatedDeadlinesByTaskIdQuery implements MapDBQuery<List<Deadli
 				}
 			}
 		}
-		return retval;
+		return MapDBQueryUtil.paging(params, retval);
 	}
 
 }

@@ -42,7 +42,7 @@ public class TasksOwnedQuery implements MapDBQuery<List<TaskSummary>> {
 			retval.add(new TaskSummaryImpl(tts.getById().get(id)));
 		}
 		
-		return retval;
+		return MapDBQueryUtil.paging(params, retval);
 	}
 
 }

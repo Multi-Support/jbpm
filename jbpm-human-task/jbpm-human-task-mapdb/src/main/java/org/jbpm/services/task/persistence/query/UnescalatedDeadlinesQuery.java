@@ -44,7 +44,7 @@ public class UnescalatedDeadlinesQuery implements MapDBQuery<List<DeadlineSummar
 				}
 			}
 		}
-		return retval;
+		return MapDBQueryUtil.paging(params, retval);
 	}
 
 	private void addAll(Set<Long> values, long[] v) {

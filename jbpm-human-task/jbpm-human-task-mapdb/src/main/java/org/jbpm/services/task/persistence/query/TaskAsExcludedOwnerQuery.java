@@ -29,6 +29,6 @@ public class TaskAsExcludedOwnerQuery implements MapDBQuery<List<TaskSummary>> {
 				}
 			}
 		}
-		return retval;
+		return MapDBQueryUtil.paging(params, retval);
 	}
 }

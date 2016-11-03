@@ -40,9 +40,9 @@ public class TasksByStatusQuery implements MapDBQuery<List<TaskSummary>> {
 			retval.add(new TaskSummaryImpl(tts.getById().get(id)));
 		}
 		if (since != null) {
-			return filter(retval, since);
+			retval = filter(retval, since);
 		}
-		return retval;
+		return MapDBQueryUtil.paging(params, retval);
 	}
 
 	private List<TaskSummary> filter(List<TaskSummary> list, Date since) {

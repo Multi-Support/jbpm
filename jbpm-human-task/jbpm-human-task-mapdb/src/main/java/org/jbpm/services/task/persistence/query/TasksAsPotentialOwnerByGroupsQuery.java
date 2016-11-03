@@ -75,7 +75,7 @@ public class TasksAsPotentialOwnerByGroupsQuery implements MapDBQuery<List<Objec
 				}
 			}
 		}
-		return retval;
+		return MapDBQueryUtil.paging(params, retval);
 	}
 	
 	private boolean violatesExpDateCondition(Date expDate, Task task) {

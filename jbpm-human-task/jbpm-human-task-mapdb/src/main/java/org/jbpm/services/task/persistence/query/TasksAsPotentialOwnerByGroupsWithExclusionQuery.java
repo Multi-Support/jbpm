@@ -65,6 +65,6 @@ public class TasksAsPotentialOwnerByGroupsWithExclusionQuery implements MapDBQue
 				}
 			}
 		}
-		return retval;
+		return MapDBQueryUtil.paging(params, retval);
 	}
 }

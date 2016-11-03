@@ -28,7 +28,7 @@ public class PotentialOwnersForTaskIdsQuery implements MapDBQuery<List<Object[]>
 				}
 			}
 		}
-		return retval;
+		return MapDBQueryUtil.paging(params, retval);
 	}
 
 }

@@ -18,7 +18,7 @@ public class AttachmentsByTaskIdQuery implements MapDBQuery<List<Attachment>> {
 		Long taskId = (Long) params.get("taskId");
 		if (tts.getById().containsKey(taskId)) {
 			Task task = tts.getById().get(taskId);
-			return task.getTaskData().getAttachments();
+			return MapDBQueryUtil.paging(params, task.getTaskData().getAttachments());
 		}
 		return new ArrayList<>();
 	}
