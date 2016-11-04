@@ -19,6 +19,7 @@ package org.jbpm.services.task.impl.model;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.util.Map;
 
 import org.kie.internal.task.api.model.AccessType;
 
@@ -27,6 +28,8 @@ public class ContentDataImpl implements org.kie.internal.task.api.model.ContentD
 	private AccessType accessType;
 	private String type;
 	private byte[] content;
+	private Map<String, Object> contentMap;
+	private Object contentObject;
 
 	public AccessType getAccessType() {
 		return accessType;
@@ -51,6 +54,23 @@ public class ContentDataImpl implements org.kie.internal.task.api.model.ContentD
 	public void setContent(byte[] content) {
 		this.content = content;
 	}
+	
+	@Override @SuppressWarnings("unchecked")
+	public void setContentObject(Object object) {
+		if (object instanceof Map) {
+			contentMap = (Map<String, Object>) object;
+		} else {
+			contentObject = object;
+		}
+	}
+	
+	@Override
+	public Object getContentObject() {
+		if (contentMap != null) {
+			return contentMap;
+		}
+		return contentObject;
+	}
 
 	public void writeExternal(ObjectOutput out) throws IOException {
 		if ( accessType != null ) {
@@ -72,6 +92,12 @@ public class ContentDataImpl implements org.kie.internal.task.api.model.ContentD
 		} else {
             out.writeBoolean( false );
         }
+		if ( contentMap == null && contentObject == null) {
+			out.writeBoolean( false );
+		} else {
+			out.writeBoolean( true );
+			out.writeObject(getContentObject());
+		}
     }
     
     public void readExternal(ObjectInput in) throws IOException,
@@ -86,6 +112,9 @@ public class ContentDataImpl implements org.kie.internal.task.api.model.ContentD
     		content = new byte[ in.readInt() ];
     		in.readFully( content );
     	}
+    	if (in.available() > 0 && in.readBoolean()) {
+    		Object obj = in.readObject();
+    		setContentObject(obj);
+    	}
     }
-
 }
