@@ -11,6 +11,7 @@ import org.drools.persistence.mapdb.MapDBPersistenceContext;
 import org.jbpm.persistence.PersistentCorrelationKey;
 import org.jbpm.persistence.PersistentProcessInstance;
 import org.jbpm.persistence.ProcessPersistenceContext;
+import org.kie.api.persistence.ObjectStoringStrategy;
 import org.kie.internal.process.CorrelationKey;
 import org.mapdb.Atomic;
 import org.mapdb.BTreeMap;
@@ -25,8 +26,8 @@ public class MapDBProcessPersistenceContext  extends MapDBPersistenceContext
 	//private final BTreeMap<PersistentCorrelationKey, Long> mapByCK;
 	private final BTreeMap<ProcessKey, PersistentProcessInstance> map;
 	
-	public MapDBProcessPersistenceContext(DB db, TransactionManager txm) {
-		super(db, txm);
+	public MapDBProcessPersistenceContext(DB db, TransactionManager txm, ObjectStoringStrategy[] strategies) {
+		super(db, txm, strategies);
 		String keyPrefix = new MapDBProcessInstance().getMapKey();
 		/*this.mapById = db.treeMap(keyPrefix + "ById", 
 				Serializer.LONG, new PersistentProcessInstanceSerializer()).createOrOpen();

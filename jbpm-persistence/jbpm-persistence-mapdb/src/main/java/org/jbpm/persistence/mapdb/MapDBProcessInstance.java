@@ -22,9 +22,9 @@ import org.jbpm.marshalling.impl.ProtobufRuleFlowProcessInstanceMarshaller;
 import org.jbpm.persistence.PersistentProcessInstance;
 import org.jbpm.process.instance.impl.ProcessInstanceImpl;
 import org.jbpm.workflow.instance.impl.WorkflowProcessInstanceImpl;
+import org.kie.api.persistence.ObjectStoringStrategy;
 import org.kie.api.runtime.Environment;
 import org.kie.api.runtime.process.ProcessInstance;
-import org.mapdb.BTreeMap;
 import org.mapdb.DB;
 
 public class MapDBProcessInstance implements PersistentProcessInstance, MapDBTransformable {
@@ -210,31 +210,8 @@ public class MapDBProcessInstance implements PersistentProcessInstance, MapDBTra
 	}
 
 	@Override
-	public boolean updateOnMap(DB db) {
-		/*BTreeMap<Long, PersistentProcessInstance> byId = db.treeMap(
-				getMapKey() + "ById", Serializer.LONG,
-				new PersistentProcessInstanceSerializer()).open();
-		byId.put(getId(), this);
-		BTreeMap<String, long[]> byEventTypes = db.treeMap(
-				getMapKey() + "ByEventTypes", 
-				Serializer.STRING, Serializer.LONG_ARRAY).open();
-		if (getEventTypes() != null) {
-			for (String eventType : getEventTypes()) {
-				long[] ids = new long[] { getId() };
-				if (byEventTypes.containsKey(eventType)) {
-					long[] otherIds = byEventTypes.get(eventType);
-					ids = Arrays.copyOf(otherIds, otherIds.length + 1);
-					ids[ids.length - 1] = getId();
-				}
-				byEventTypes.put(eventType, ids);
-			}
-		}
-		return true;*/
-		BTreeMap<ProcessKey, PersistentProcessInstance> map = db.treeMap(
-				getMapKey(), new ProcessInstanceKeySerializer(), 
-				new PersistentProcessInstanceSerializer()).open();
-		ProcessKey key = new ProcessKey(getId(), getEventTypes(), null);
-		map.put(key, this);
+	public boolean updateOnMap(DB db, ObjectStoringStrategy[] strategies) {
+		new ProcessIndexService(db, strategies).update(this);
 		return true;
 	}
 
