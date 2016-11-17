@@ -15,29 +15,19 @@
 
 package org.jbpm.services.task.persistence;
 
-import org.drools.persistence.TransactionManager;
-import org.drools.persistence.mapdb.MapDBEnvironmentName;
 import org.kie.api.runtime.Environment;
 import org.kie.api.runtime.EnvironmentName;
-import org.kie.api.task.UserGroupCallback;
 import org.kie.internal.task.api.TaskPersistenceContext;
 import org.kie.internal.task.api.TaskPersistenceContextManager;
-import org.mapdb.DB;
 
 public class MapDBTaskPersistenceContextManager implements
 		TaskPersistenceContextManager {
 	
 	private Environment env;
-	private DB db;
-	private TransactionManager txm;
 	private MapDBTaskPersistenceContext cmdPersistenceContext;
-	private UserGroupCallback callback;
 
 	public MapDBTaskPersistenceContextManager(Environment environment) {
 		this.env = environment;
-		this.db = (DB) env.get(MapDBEnvironmentName.DB_OBJECT);
-		this.txm = (TransactionManager) env.get(EnvironmentName.TRANSACTION_MANAGER);
-		this.callback = (UserGroupCallback) env.get(EnvironmentName.TASK_USER_GROUP_CALLBACK);
 	}
 
 	@Override
@@ -57,7 +47,7 @@ public class MapDBTaskPersistenceContextManager implements
 
 	@Override
 	public void beginCommandScopedEntityManager() {
-		this.cmdPersistenceContext = new MapDBTaskPersistenceContext(db, txm, callback);
+		this.cmdPersistenceContext = new MapDBTaskPersistenceContext(env);
 		this.env.set( EnvironmentName.CMD_SCOPED_ENTITY_MANAGER, this.cmdPersistenceContext );
 	}
 

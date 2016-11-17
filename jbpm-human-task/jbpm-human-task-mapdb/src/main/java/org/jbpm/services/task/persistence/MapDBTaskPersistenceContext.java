@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.drools.persistence.TransactionManager;
+import org.drools.persistence.mapdb.MapDBEnvironmentName;
 import org.jbpm.services.task.impl.model.AttachmentImpl;
 import org.jbpm.services.task.impl.model.CommentImpl;
 import org.jbpm.services.task.impl.model.ContentImpl;
@@ -28,6 +29,9 @@ import org.jbpm.services.task.impl.model.TaskImpl;
 import org.jbpm.services.task.persistence.index.TaskTableService;
 import org.jbpm.services.task.persistence.query.MapDBQuery;
 import org.jbpm.services.task.persistence.query.MapDBQueryRegistry;
+import org.kie.api.persistence.ObjectStoringStrategy;
+import org.kie.api.runtime.Environment;
+import org.kie.api.runtime.EnvironmentName;
 import org.kie.api.task.UserGroupCallback;
 import org.kie.api.task.model.Attachment;
 import org.kie.api.task.model.Comment;
@@ -75,14 +79,18 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 
 	private UserGroupCallback callback;
 
+	private Environment env;
+
 
     // Interface methods ----------------------------------------------------------------------------------------------------------
 
-	public MapDBTaskPersistenceContext(DB db, TransactionManager txm, UserGroupCallback callback) {
-		this.db = db;
-		this.tts = new TaskTableService(db);
-		this.txm = txm;
-		this.callback = callback;
+	public MapDBTaskPersistenceContext(Environment environment) {
+		this.env = environment;
+		this.db = (DB) environment.get(MapDBEnvironmentName.DB_OBJECT);
+		ObjectStoringStrategy[] strategies = (ObjectStoringStrategy[]) environment.get(MapDBEnvironmentName.OBJECT_STORING_STRATEGIES);
+		this.tts = new TaskTableService(db, strategies);
+		this.txm = (TransactionManager) environment.get(EnvironmentName.TRANSACTION_MANAGER);
+		this.callback = (UserGroupCallback) environment.get(EnvironmentName.TASK_USER_GROUP_CALLBACK);
 		this.taskById = db.hashMap("taskById", 
 				new SerializerLong(), 
 				new TaskSerializer()).createOrOpen();
@@ -308,6 +316,7 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 			id = content.getId();
 		}
 		((InternalTaskData) task.getTaskData()).setDocument(id, contentData);
+		tts.storeContent(task.getId(), id, contentData.getContentObject());
 		TaskTransactionHelper.addToUpdatableSet(txm, (MapDBElement) task);
 		return task;
 	}
@@ -319,6 +328,7 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 			id = content.getId();
 		}
 		((InternalTaskData) task.getTaskData()).setFault(id, faultData);
+		tts.storeContent(task.getId(), id, faultData.getContentObject());
 		TaskTransactionHelper.addToUpdatableSet(txm, (MapDBElement) task);
 		return task;
 	}
@@ -331,6 +341,7 @@ public class MapDBTaskPersistenceContext implements TaskPersistenceContext {
 			id = content.getId();
 		}
 		((InternalTaskData) task.getTaskData()).setOutput(id, contentData);
+		tts.storeContent(task.getId(), id, contentData.getContentObject());
 		TaskTransactionHelper.addToUpdatableSet(txm, (MapDBElement) task);
 		return task;	
 	}

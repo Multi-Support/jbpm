@@ -373,7 +373,7 @@ public class TaskImpl implements InternalTask, MapDBElement {
 
 	@Override
 	public void updateOnMap(DB db) {
-		new TaskTableService(db).update(this);
+		TaskTableService.getAvailable().update(this);
 	}
 
 }

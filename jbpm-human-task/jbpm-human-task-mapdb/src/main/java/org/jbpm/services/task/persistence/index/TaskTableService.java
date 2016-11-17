@@ -6,6 +6,7 @@ import java.util.Map;
 import org.jbpm.services.task.persistence.OrganizationalEntitySerializer;
 import org.jbpm.services.task.persistence.TaskDeadlineSerializer;
 import org.jbpm.services.task.persistence.TaskSerializer;
+import org.kie.api.persistence.ObjectStoringStrategy;
 import org.kie.api.task.model.OrganizationalEntity;
 import org.kie.api.task.model.Task;
 import org.kie.api.task.model.User;
@@ -38,6 +39,9 @@ public class TaskTableService {
 	
 	private static BTreeMap<String, OrganizationalEntity> orgEntities = null;
 	private static BTreeMap<Long, Deadline> deadlines = null;
+	private static TaskTableService availableInstance;
+
+	private ObjectStoringStrategy[] strategies;
 	
 	private static synchronized void init(DB db) {
 		if (byId == null || byId.isClosed()) {
@@ -62,8 +66,10 @@ public class TaskTableService {
 		}
 	}
 
-	public TaskTableService(DB db) {
+	public TaskTableService(DB db, ObjectStoringStrategy[] strategies) {
 		init(db);
+		this.strategies = strategies;
+		availableInstance = this;
 	}
 	
 	public void update(Task task) {
@@ -324,5 +330,36 @@ public class TaskTableService {
 						+ " id, please check that there is no group and user with same id");				
 			}
 		}
+	}
+
+	public void storeContent(Long taskId, Long contentId, Object content) {
+		if (strategies != null) {
+			if (!store(content) && (content instanceof Map)) {
+				Map<?, ?> map = (Map<?, ?>) content;
+				for (Map.Entry<?, ?> entry : map.entrySet()) {
+					String key = entry.getKey().toString();
+					Object value = entry.getValue();
+					if (store(entry) || store(value)) {
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	private boolean store(Object content) {
+		boolean stored = false;
+		for (ObjectStoringStrategy strategy : strategies) {
+			if (strategy.accept(content)) {
+				strategy.persist(content);
+				stored = true;
+				break;
+			}
+		}
+		return stored;
+	}
+
+	public static TaskTableService getAvailable() {
+		return availableInstance;
 	}
 }
