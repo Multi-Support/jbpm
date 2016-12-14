@@ -61,7 +61,11 @@ public class TaskReminderMapDBTest extends TaskReminderBaseTest {
                 // Do nothing
             }
         }
-        super.tearDown();
-		MapDBProcessPersistenceUtil.cleanUp(context);
+        try {
+        	super.tearDown();
+        	MapDBProcessPersistenceUtil.cleanUp(context);
+        } catch (Throwable e) {
+        	e.printStackTrace();
+        }
     }
 }

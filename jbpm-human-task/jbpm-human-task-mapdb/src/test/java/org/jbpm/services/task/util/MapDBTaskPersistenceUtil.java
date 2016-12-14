@@ -2,6 +2,7 @@ package org.jbpm.services.task.util;
 
 import org.drools.persistence.TransactionManager;
 import org.drools.persistence.jta.JtaTransactionManagerFactory;
+import org.drools.persistence.jta.TransactionLockInterceptor;
 import org.jbpm.services.task.commands.TaskCommandExecutorImpl;
 import org.jbpm.services.task.events.TaskEventSupport;
 import org.jbpm.services.task.identity.DefaultUserInfo;
@@ -30,10 +31,13 @@ public class MapDBTaskPersistenceUtil {
         env.set(EnvironmentName.TASK_PERSISTENCE_CONTEXT_MANAGER, tpcm);
         //taskEventSupport.addEventListener(new BAMTaskEventListener(true));
         TaskCommandExecutorImpl commandExecutor = new TaskCommandExecutorImpl(env, taskEventSupport);
-        commandExecutor.addInterceptor(new TaskTransactionInterceptor(env));
+        TaskTransactionInterceptor interceptor = new TaskTransactionInterceptor(env);
+		commandExecutor.addInterceptor(interceptor);
+		commandExecutor.addInterceptor(new TransactionLockInterceptor(env));
         if (TaskDeadlinesServiceImpl.getInstance() == null) {
         	TaskDeadlinesServiceImpl.initialize(commandExecutor);
         }
         return new CommandBasedTaskService(commandExecutor, taskEventSupport);
 	}
+	
 }
