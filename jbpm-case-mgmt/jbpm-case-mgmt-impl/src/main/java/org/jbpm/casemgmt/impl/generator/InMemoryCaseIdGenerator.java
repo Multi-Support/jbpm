@@ -32,6 +32,7 @@ import org.jbpm.casemgmt.api.generator.CasePrefixNotFoundException;
 public class InMemoryCaseIdGenerator implements CaseIdGenerator {
 
     private static ConcurrentMap<String, AtomicLong> sequences = new ConcurrentHashMap<>();
+    private static final String IDENTIFIER = "InMemory";
     
     @Override
     public void register(String prefix) {
@@ -52,6 +53,11 @@ public class InMemoryCaseIdGenerator implements CaseIdGenerator {
         long nextVal = sequences.get(prefix).incrementAndGet();
         String paddedNumber = String.format("%010d", nextVal);
         return prefix + "-" + paddedNumber;
+    }
+    
+    @Override
+    public String getIdentifier() {
+        return IDENTIFIER;
     }
 
 }

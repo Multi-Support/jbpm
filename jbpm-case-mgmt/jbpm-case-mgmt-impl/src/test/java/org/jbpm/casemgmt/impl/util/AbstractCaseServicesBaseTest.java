@@ -17,6 +17,8 @@
 package org.jbpm.casemgmt.impl.util;
 
 import static java.util.stream.Collectors.toMap;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 import java.io.File;
@@ -35,12 +37,16 @@ import org.dashbuilder.DataSetCore;
 import org.drools.compiler.kie.builder.impl.InternalKieModule;
 import org.jbpm.casemgmt.api.CaseRuntimeDataService;
 import org.jbpm.casemgmt.api.CaseService;
+import org.jbpm.casemgmt.api.auth.AuthorizationManager;
 import org.jbpm.casemgmt.api.generator.CaseIdGenerator;
 import org.jbpm.casemgmt.api.model.AdHocFragment;
 import org.jbpm.casemgmt.api.model.CaseDefinition;
 import org.jbpm.casemgmt.api.model.CaseMilestone;
 import org.jbpm.casemgmt.api.model.CaseRole;
 import org.jbpm.casemgmt.api.model.CaseStage;
+import org.jbpm.casemgmt.api.model.instance.CaseInstance;
+import org.jbpm.casemgmt.api.model.instance.CommentInstance;
+import org.jbpm.casemgmt.impl.AuthorizationManagerImpl;
 import org.jbpm.casemgmt.impl.CaseRuntimeDataServiceImpl;
 import org.jbpm.casemgmt.impl.CaseServiceImpl;
 import org.jbpm.casemgmt.impl.event.CaseConfigurationDeploymentListener;
@@ -62,6 +68,8 @@ import org.jbpm.services.api.DeploymentService;
 import org.jbpm.services.api.ProcessService;
 import org.jbpm.services.api.RuntimeDataService;
 import org.jbpm.services.api.UserTaskService;
+import org.jbpm.services.api.model.NodeInstanceDesc;
+import org.jbpm.services.api.model.ProcessDefinition;
 import org.jbpm.services.api.model.UserTaskDefinition;
 import org.jbpm.services.api.query.QueryService;
 import org.jbpm.services.task.HumanTaskServiceFactory;
@@ -79,6 +87,8 @@ import org.kie.api.conf.EqualityBehaviorOption;
 import org.kie.api.conf.EventProcessingOption;
 import org.kie.api.runtime.conf.ClockTypeOption;
 import org.kie.api.task.TaskService;
+import org.kie.api.task.model.Status;
+import org.kie.api.task.model.TaskSummary;
 import org.kie.internal.io.ResourceFactory;
 import org.kie.internal.runtime.conf.DeploymentDescriptor;
 import org.kie.internal.runtime.conf.DeploymentDescriptorBuilder;
@@ -112,6 +122,8 @@ public abstract class AbstractCaseServicesBaseTest {
 
     protected TestIdentityProvider identityProvider;
     protected CaseIdGenerator caseIdGenerator;
+    
+    protected AuthorizationManager authorizationManager;
 
     protected static final String EMPTY_CASE_P_ID = "EmptyCase";
     protected static final String USER_TASK_STAGE_CASE_P_ID = "UserTaskWithStageCase";
@@ -119,6 +131,9 @@ public abstract class AbstractCaseServicesBaseTest {
     protected static final String USER_TASK_STAGE_AUTO_START_CASE_P_ID = "UserTaskWithStageCaseAutoStart";
     protected static final String USER_TASK_STAGE_ADHOC_CASE_P_ID = "UserStageAdhocCase";
     protected static final String NO_START_NODE_CASE_P_ID = "NoStartNodeAdhocCase";
+    protected static final String COND_CASE_P_ID = "CaseFileConditionalEvent";
+    protected static final String TWO_STAGES_CASE_P_ID = "CaseWithTwoStages";
+    protected static final String TWO_STAGES_CONDITIONS_CASE_P_ID = "CaseWithTwoStagesConditions";
 
     protected static final String SUBPROCESS_P_ID = "DataVerification";
 
@@ -138,6 +153,7 @@ public abstract class AbstractCaseServicesBaseTest {
         buildDatasource();
         emf = EntityManagerFactoryManager.get().getOrCreate("org.jbpm.domain");
         identityProvider = new TestIdentityProvider();
+        authorizationManager = new AuthorizationManagerImpl(identityProvider, new TransactionalCommandService(emf));
 
         // build definition service
         bpmn2Service = new BPMN2DataServiceImpl();
@@ -197,6 +213,7 @@ public abstract class AbstractCaseServicesBaseTest {
         ((CaseServiceImpl) caseService).setDeploymentService(deploymentService);
         ((CaseServiceImpl) caseService).setRuntimeDataService(runtimeDataService);
         ((CaseServiceImpl) caseService).setCommandService(new TransactionalCommandService(emf));
+        ((CaseServiceImpl) caseService).setAuthorizationManager(authorizationManager);
 
         CaseConfigurationDeploymentListener configurationListener = new CaseConfigurationDeploymentListener();
 
@@ -407,5 +424,34 @@ public abstract class AbstractCaseServicesBaseTest {
     protected Map<String, AdHocFragment> mapAdHocFragments(Collection<AdHocFragment> adHocFragments) {
         return adHocFragments.stream().collect(toMap(AdHocFragment::getName, t -> t));
     }
+    
+    protected Map<String, ProcessDefinition> mapProcesses(Collection<ProcessDefinition> processes) {
+        return processes.stream().collect(toMap(ProcessDefinition::getId, p -> p));
+    }
+    
+    protected Map<String, NodeInstanceDesc> mapNodeInstances(Collection<NodeInstanceDesc> nodes) {
+        return nodes.stream().collect(toMap(NodeInstanceDesc::getName, n -> n));
+    }
 
+    
+    protected void assertComment(CommentInstance comment, String author, String content) {
+        assertNotNull(comment);
+        assertEquals(author, comment.getAuthor());
+        assertEquals(content, comment.getComment());
+    }
+    
+    protected void assertTask(TaskSummary task, String actor, String name, Status status) {
+        assertNotNull(task);            
+        assertEquals(name, task.getName());
+        assertEquals(actor, task.getActualOwnerId());
+        assertEquals(status, task.getStatus());
+    }
+    
+    protected void assertCaseInstance(String caseId, String name) {
+        CaseInstance cInstance = caseService.getCaseInstance(caseId, true, false, false, false);
+        assertNotNull(cInstance);
+        assertEquals(caseId, cInstance.getCaseId());
+        assertNotNull(cInstance.getCaseFile());
+        assertEquals(name, cInstance.getCaseFile().getData("name"));
+    }
 }

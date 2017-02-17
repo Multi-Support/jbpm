@@ -31,25 +31,30 @@ import java.util.List;
 import java.util.Map;
 
 import org.drools.compiler.kie.builder.impl.InternalKieModule;
+import org.jbpm.casemgmt.api.CaseNotFoundException;
 import org.jbpm.casemgmt.api.model.AdHocFragment;
-import org.jbpm.casemgmt.api.model.CaseDefinition;
-import org.jbpm.casemgmt.api.model.CaseMilestone;
-import org.jbpm.casemgmt.api.model.CaseRole;
-import org.jbpm.casemgmt.api.model.CaseStage;
 import org.jbpm.casemgmt.api.model.instance.CaseFileInstance;
 import org.jbpm.casemgmt.api.model.instance.CaseInstance;
+import org.jbpm.casemgmt.api.model.instance.CaseStageInstance;
+import org.jbpm.casemgmt.api.model.instance.StageStatus;
 import org.jbpm.casemgmt.impl.util.AbstractCaseServicesBaseTest;
 import org.jbpm.kie.services.impl.KModuleDeploymentUnit;
 import org.jbpm.services.api.model.DeploymentUnit;
 import org.jbpm.services.api.model.NodeInstanceDesc;
+import org.jbpm.services.api.model.ProcessDefinition;
+import org.jbpm.services.api.model.ProcessInstanceDesc;
+import org.jbpm.services.task.impl.model.UserImpl;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.kie.api.KieServices;
 import org.kie.api.builder.ReleaseId;
 import org.kie.api.runtime.process.ProcessInstance;
+import org.kie.api.task.model.OrganizationalEntity;
+import org.kie.api.task.model.Status;
 import org.kie.api.task.model.TaskSummary;
 import org.kie.internal.query.QueryContext;
+import org.kie.internal.query.QueryFilter;
 import org.kie.scanner.MavenRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,6 +78,8 @@ public class CaseRuntimeDataServiceImplTest extends AbstractCaseServicesBaseTest
         processes.add("cases/UserTaskCase.bpmn2");
         processes.add("cases/UserTaskCaseBoundary.bpmn2");
         processes.add("cases/UserTaskWithStageCase.bpmn2");
+        processes.add("cases/CaseWithTwoStages.bpmn2");
+        processes.add("cases/CaseWithTwoStagesConditions.bpmn2");
         // add processes that can be used by cases but are not cases themselves
         processes.add("processes/DataVerificationProcess.bpmn2");
         processes.add("processes/UserTaskProcess.bpmn2");
@@ -93,6 +100,7 @@ public class CaseRuntimeDataServiceImplTest extends AbstractCaseServicesBaseTest
 
     @After
     public void cleanup() {
+        identityProvider.reset();
         cleanupSingletonSessionId();
         if (units != null && !units.isEmpty()) {
             for (DeploymentUnit unit : units) {
@@ -102,364 +110,6 @@ public class CaseRuntimeDataServiceImplTest extends AbstractCaseServicesBaseTest
         }
         close();
     }
-
-    @Test
-    public void testGetCaseDefinitions() {
-        assertNotNull(deploymentService);        
-        DeploymentUnit deploymentUnit = new KModuleDeploymentUnit(GROUP_ID, ARTIFACT_ID, VERSION);
-
-        deploymentService.deploy(deploymentUnit);
-        units.add(deploymentUnit);
-        Collection<CaseDefinition> cases = caseRuntimeDataService.getCases(new QueryContext());
-        assertNotNull(cases);
-        assertEquals(4, cases.size());
-
-        Map<String, CaseDefinition> mappedCases = mapCases(cases);        
-        assertTrue(mappedCases.containsKey("EmptyCase"));
-        assertTrue(mappedCases.containsKey("UserTaskCase"));
-        assertTrue(mappedCases.containsKey("UserTaskCaseBoundary"));
-        assertTrue(mappedCases.containsKey("UserTaskWithStageCase"));
-
-        // EmptyCase asserts
-        CaseDefinition caseDef = mappedCases.get("EmptyCase");
-        assertNotNull(caseDef);
-        assertEquals("EmptyCase", caseDef.getId());
-        assertEquals("New Case", caseDef.getName());
-        assertEquals("", caseDef.getVersion());
-        assertEquals(CaseDefinition.DEFAULT_PREFIX, caseDef.getIdentifierPrefix());
-        assertNotNull(caseDef.getCaseMilestones());
-        assertTrue(caseDef.getCaseMilestones().isEmpty());
-        assertNotNull(caseDef.getCaseStages());
-        assertTrue(caseDef.getCaseStages().isEmpty());
-        assertNotNull(caseDef.getCaseRoles());
-        assertTrue(caseDef.getCaseRoles().isEmpty());
-        assertEquals(deploymentUnit.getIdentifier(), caseDef.getDeploymentId());
-
-        // UserTaskCase asserts
-        caseDef = mappedCases.get("UserTaskCase");
-        assertNotNull(caseDef);
-        assertEquals("UserTaskCase", caseDef.getId());
-        assertEquals("Simple Case with User Tasks", caseDef.getName());
-        assertEquals("1.0", caseDef.getVersion());
-        assertEquals("HR", caseDef.getIdentifierPrefix());
-        assertNotNull(caseDef.getCaseMilestones());
-        assertEquals(2, caseDef.getCaseMilestones().size());
-
-        Map<String, CaseMilestone> mappedMilestones = mapMilestones(caseDef.getCaseMilestones());
-        assertTrue(mappedMilestones.containsKey("Milestone1"));
-        assertTrue(mappedMilestones.containsKey("Milestone2"));
-
-        CaseMilestone milestone = mappedMilestones.get("Milestone1");
-        assertEquals("_SomeID4", milestone.getId());
-        assertEquals("Milestone1", milestone.getName());
-        assertEquals("", milestone.getAchievementCondition());
-        assertEquals(false, milestone.isMandatory());
-
-        milestone = mappedMilestones.get("Milestone2");
-        assertEquals("_5", milestone.getId());
-        assertEquals("Milestone2", milestone.getName());
-        assertEquals("org.kie.api.runtime.process.CaseData(data.get(\"dataComplete\") == true)", milestone.getAchievementCondition());
-        assertEquals(false, milestone.isMandatory());
-
-        assertNotNull(caseDef.getCaseStages());
-        assertEquals(0, caseDef.getCaseStages().size());
-
-        assertNotNull(caseDef.getCaseRoles());
-        assertEquals(3, caseDef.getCaseRoles().size());
-
-        Map<String, CaseRole> mappedRoles = mapRoles(caseDef.getCaseRoles());        
-        assertTrue(mappedRoles.containsKey("owner"));
-        assertTrue(mappedRoles.containsKey("contact"));
-        assertTrue(mappedRoles.containsKey("participant"));
-
-        assertEquals(1, mappedRoles.get("owner").getCardinality().intValue());
-        assertEquals(2, mappedRoles.get("contact").getCardinality().intValue());
-        assertEquals(-1, mappedRoles.get("participant").getCardinality().intValue());
-
-        // UserTaskWithStageCase asserts
-        caseDef = mappedCases.get("UserTaskWithStageCase");
-        assertNotNull(caseDef);
-        assertEquals("UserTaskWithStageCase", caseDef.getId());
-        assertEquals("UserTaskWithStageCase", caseDef.getName());
-        assertEquals("1.0", caseDef.getVersion());
-        assertEquals(CaseDefinition.DEFAULT_PREFIX, caseDef.getIdentifierPrefix());
-        assertNotNull(caseDef.getCaseMilestones());
-        assertEquals(0, caseDef.getCaseMilestones().size());
-        assertEquals(deploymentUnit.getIdentifier(), caseDef.getDeploymentId());
-
-        assertNotNull(caseDef.getCaseStages());
-        assertEquals(1, caseDef.getCaseStages().size());
-
-        Map<String, CaseStage> mappedStages = mapStages(caseDef.getCaseStages());
-        assertTrue(mappedStages.containsKey("Collect input"));
-
-        CaseStage caseStage = mappedStages.get("Collect input");
-        assertNotNull(caseStage);
-        assertEquals("Collect input", caseStage.getName());
-        assertEquals(2, caseStage.getAdHocFragments().size());
-
-        Map<String, AdHocFragment> mappedFragments = mapAdHocFragments(caseStage.getAdHocFragments());
-        assertTrue(mappedFragments.containsKey("Missing data"));
-        assertEquals("HumanTaskNode", mappedFragments.get("Missing data").getType());
-        assertTrue(mappedFragments.containsKey("Verification of data"));
-        assertEquals("SubProcessNode", mappedFragments.get("Verification of data").getType());
-
-
-        assertNotNull(caseDef.getCaseRoles());
-        assertEquals(3, caseDef.getCaseRoles().size());
-
-        mappedRoles = mapRoles(caseDef.getCaseRoles());        
-        assertTrue(mappedRoles.containsKey("owner"));
-        assertTrue(mappedRoles.containsKey("contact"));
-        assertTrue(mappedRoles.containsKey("participant"));
-
-        assertEquals(1, mappedRoles.get("owner").getCardinality().intValue());
-        assertEquals(2, mappedRoles.get("contact").getCardinality().intValue());
-        assertEquals(-1, mappedRoles.get("participant").getCardinality().intValue());
-    }
-
-    @Test
-    public void testGetCaseDefinitionsSorted() {
-        assertNotNull(deploymentService);
-        DeploymentUnit deploymentUnit = new KModuleDeploymentUnit(GROUP_ID, ARTIFACT_ID, VERSION);
-
-        deploymentService.deploy(deploymentUnit);
-        units.add(deploymentUnit);
-
-        Collection<CaseDefinition> cases = caseRuntimeDataService.getCases(new QueryContext(0, 1, SORT_BY_CASE_DEFINITION_NAME, true));
-        assertNotNull(cases);
-        assertEquals(1, cases.size());
-        assertEquals("EmptyCase", cases.iterator().next().getId());
-
-        cases = caseRuntimeDataService.getCases(new QueryContext(1, 1, SORT_BY_CASE_DEFINITION_NAME, true));
-        assertNotNull(cases);
-        assertEquals(1, cases.size());
-        assertEquals("UserTaskCase", cases.iterator().next().getId());
-
-        cases = caseRuntimeDataService.getCases(new QueryContext(2, 1, SORT_BY_CASE_DEFINITION_NAME, true));
-        assertNotNull(cases);
-        assertEquals(1, cases.size());
-        assertEquals("UserTaskCaseBoundary", cases.iterator().next().getId());
-
-        cases = caseRuntimeDataService.getCases(new QueryContext(SORT_BY_CASE_DEFINITION_NAME, false));
-        assertNotNull(cases);
-        assertEquals(4, cases.size());
-
-        List<CaseDefinition> sortedCases = new ArrayList<>(cases);
-        assertEquals("UserTaskWithStageCase", sortedCases.get(0).getId());        
-        assertEquals("UserTaskCaseBoundary", sortedCases.get(1).getId());
-        assertEquals("UserTaskCase", sortedCases.get(2).getId());
-        assertEquals("EmptyCase", sortedCases.get(3).getId());
-    }
-
-    @Test
-    public void testGetCaseDefinitionsByDeploymentId() {
-        assertNotNull(deploymentService);
-        DeploymentUnit deploymentUnit = new KModuleDeploymentUnit(GROUP_ID, ARTIFACT_ID, VERSION);
-
-        deploymentService.deploy(deploymentUnit);
-        units.add(deploymentUnit);
-        Collection<CaseDefinition> cases = caseRuntimeDataService.getCasesByDeployment(deploymentUnit.getIdentifier(), new QueryContext());
-        assertNotNull(cases);
-        assertEquals(4, cases.size());
-
-        Map<String, CaseDefinition> mappedCases = mapCases(cases);        
-        assertTrue(mappedCases.containsKey("EmptyCase"));
-        assertTrue(mappedCases.containsKey("UserTaskCase"));
-        assertTrue(mappedCases.containsKey("UserTaskCaseBoundary"));
-        assertTrue(mappedCases.containsKey("UserTaskWithStageCase"));
-
-        cases = caseRuntimeDataService.getCasesByDeployment("not-existing", new QueryContext());
-        assertNotNull(cases);        
-        assertEquals(0, cases.size());
-    }
-
-    @Test
-    public void testGetCaseDefinitionsByDeploymentIdSorted() {
-        assertNotNull(deploymentService);
-        DeploymentUnit deploymentUnit = new KModuleDeploymentUnit(GROUP_ID, ARTIFACT_ID, VERSION);
-
-        deploymentService.deploy(deploymentUnit);
-        units.add(deploymentUnit);
-
-        Collection<CaseDefinition> cases = caseRuntimeDataService.getCasesByDeployment(deploymentUnit.getIdentifier(), new QueryContext(0, 1, SORT_BY_CASE_DEFINITION_NAME, true));
-        assertNotNull(cases);
-        assertEquals(1, cases.size());
-        assertEquals("EmptyCase", cases.iterator().next().getId());
-
-        cases = caseRuntimeDataService.getCasesByDeployment(deploymentUnit.getIdentifier(), new QueryContext(1, 1, SORT_BY_CASE_DEFINITION_NAME, true));
-        assertNotNull(cases);
-        assertEquals(1, cases.size());
-        assertEquals("UserTaskCase", cases.iterator().next().getId());
-
-        cases = caseRuntimeDataService.getCasesByDeployment(deploymentUnit.getIdentifier(), new QueryContext(2, 1, SORT_BY_CASE_DEFINITION_NAME, true));
-        assertNotNull(cases);
-        assertEquals(1, cases.size());
-        assertEquals("UserTaskCaseBoundary", cases.iterator().next().getId());
-
-        cases = caseRuntimeDataService.getCasesByDeployment(deploymentUnit.getIdentifier(), new QueryContext(SORT_BY_CASE_DEFINITION_NAME, false));
-        assertNotNull(cases);
-        assertEquals(4, cases.size());
-
-        List<CaseDefinition> sortedCases = new ArrayList<>(cases);
-        assertEquals("UserTaskWithStageCase", sortedCases.get(0).getId());
-        assertEquals("UserTaskCaseBoundary", sortedCases.get(1).getId());
-        assertEquals("UserTaskCase", sortedCases.get(2).getId());        
-        assertEquals("EmptyCase", sortedCases.get(3).getId());
-    }
-
-    @Test
-    public void testGetCaseDefinitionsByFilter() {
-        assertNotNull(deploymentService);
-        DeploymentUnit deploymentUnit = new KModuleDeploymentUnit(GROUP_ID, ARTIFACT_ID, VERSION);
-
-        deploymentService.deploy(deploymentUnit);
-        units.add(deploymentUnit);
-        Collection<CaseDefinition> cases = caseRuntimeDataService.getCases("empty", new QueryContext());
-        assertNotNull(cases);
-        assertEquals(1, cases.size());
-
-        Map<String, CaseDefinition> mappedCases = mapCases(cases);        
-        assertTrue(mappedCases.containsKey("EmptyCase"));
-
-        cases = caseRuntimeDataService.getCases("User", new QueryContext());
-        assertNotNull(cases);
-        assertEquals(3, cases.size());
-
-        mappedCases = mapCases(cases);
-        assertTrue(mappedCases.containsKey("UserTaskCase"));
-        assertTrue(mappedCases.containsKey("UserTaskCaseBoundary"));
-        assertTrue(mappedCases.containsKey("UserTaskWithStageCase"));
-
-        cases = caseRuntimeDataService.getCases("nomatch", new QueryContext());
-        assertNotNull(cases);
-        assertEquals(0, cases.size());
-    }
-
-    @Test
-    public void testGetCaseDefinitionsByFilterSorted() {
-        assertNotNull(deploymentService);
-        DeploymentUnit deploymentUnit = new KModuleDeploymentUnit(GROUP_ID, ARTIFACT_ID, VERSION);
-
-        deploymentService.deploy(deploymentUnit);
-        units.add(deploymentUnit);
-
-        Collection<CaseDefinition> cases = caseRuntimeDataService.getCases("User", new QueryContext(0, 1, SORT_BY_CASE_DEFINITION_NAME, true));
-        assertNotNull(cases);
-        assertEquals(1, cases.size());
-        assertEquals("UserTaskCase", cases.iterator().next().getId());
-
-        cases = caseRuntimeDataService.getCases("User", new QueryContext(1, 1, SORT_BY_CASE_DEFINITION_NAME, true));
-        assertNotNull(cases);
-        assertEquals(1, cases.size());
-        assertEquals("UserTaskCaseBoundary", cases.iterator().next().getId());
-
-        cases = caseRuntimeDataService.getCases("User", new QueryContext(SORT_BY_CASE_DEFINITION_NAME, false));
-        assertNotNull(cases);
-        assertEquals(3, cases.size());
-
-        List<CaseDefinition >sortedCases = new ArrayList<>(cases);
-        assertEquals("UserTaskWithStageCase", sortedCases.get(0).getId());
-        assertEquals("UserTaskCaseBoundary", sortedCases.get(1).getId());
-        assertEquals("UserTaskCase", sortedCases.get(2).getId());
-        
-    }
-
-    @Test
-    public void testGetCaseDefinitionById() {
-        assertNotNull(deploymentService);
-        DeploymentUnit deploymentUnit = new KModuleDeploymentUnit(GROUP_ID, ARTIFACT_ID, VERSION);
-
-        deploymentService.deploy(deploymentUnit);
-        units.add(deploymentUnit);
-
-        CaseDefinition caseDef = caseRuntimeDataService.getCase(deploymentUnit.getIdentifier(), "UserTaskWithStageCase");
-        // UserTaskWithStageCase asserts        
-        assertNotNull(caseDef);
-        assertEquals("UserTaskWithStageCase", caseDef.getId());
-        assertEquals("UserTaskWithStageCase", caseDef.getName());
-        assertEquals("1.0", caseDef.getVersion());
-        assertEquals(CaseDefinition.DEFAULT_PREFIX, caseDef.getIdentifierPrefix());
-        assertNotNull(caseDef.getCaseMilestones());
-        assertEquals(0, caseDef.getCaseMilestones().size());
-        assertEquals(deploymentUnit.getIdentifier(), caseDef.getDeploymentId());
-
-        assertNotNull(caseDef.getCaseStages());
-        assertEquals(1, caseDef.getCaseStages().size());
-
-        Map<String, CaseStage> mappedStages = mapStages(caseDef.getCaseStages());
-        assertTrue(mappedStages.containsKey("Collect input"));
-
-        CaseStage caseStage = mappedStages.get("Collect input");
-        assertNotNull(caseStage);
-        assertEquals("Collect input", caseStage.getName());
-        assertEquals(2, caseStage.getAdHocFragments().size());
-
-        Map<String, AdHocFragment> mappedFragments = mapAdHocFragments(caseStage.getAdHocFragments());
-        assertTrue(mappedFragments.containsKey("Missing data"));
-        assertEquals("HumanTaskNode", mappedFragments.get("Missing data").getType());
-        assertTrue(mappedFragments.containsKey("Verification of data"));
-        assertEquals("SubProcessNode", mappedFragments.get("Verification of data").getType());
-
-        assertNotNull(caseDef.getCaseRoles());
-        assertEquals(3, caseDef.getCaseRoles().size());
-
-        Map<String, CaseRole> mappedRoles = mapRoles(caseDef.getCaseRoles());
-        assertTrue(mappedRoles.containsKey("owner"));
-        assertTrue(mappedRoles.containsKey("contact"));
-        assertTrue(mappedRoles.containsKey("participant"));
-
-        assertEquals(1, mappedRoles.get("owner").getCardinality().intValue());
-        assertEquals(2, mappedRoles.get("contact").getCardinality().intValue());
-        assertEquals(-1, mappedRoles.get("participant").getCardinality().intValue());
-    }
-    
-    @Test
-    public void testGetCaseDefinitionByIdWithBoundaryEvent() {
-        assertNotNull(deploymentService);
-        DeploymentUnit deploymentUnit = new KModuleDeploymentUnit(GROUP_ID, ARTIFACT_ID, VERSION);
-
-        deploymentService.deploy(deploymentUnit);
-        units.add(deploymentUnit);
-
-        CaseDefinition caseDef = caseRuntimeDataService.getCase(deploymentUnit.getIdentifier(), "UserTaskCaseBoundary");
-        // UserTaskWithStageCase asserts        
-        assertNotNull(caseDef);
-        assertEquals("UserTaskCaseBoundary", caseDef.getId());
-        assertEquals("Simple Case with User Tasks and Boundary", caseDef.getName());
-        assertEquals("1.0", caseDef.getVersion());
-        assertEquals("HR", caseDef.getIdentifierPrefix());
-        assertEquals(2, caseDef.getCaseMilestones().size());
-        assertEquals(0, caseDef.getCaseStages().size());
-        assertEquals(3, caseDef.getAdHocFragments().size());
-        
-        assertEquals(deploymentUnit.getIdentifier(), caseDef.getDeploymentId());
-        
-        Map<String, CaseMilestone> mappedMilestones = mapMilestones(caseDef.getCaseMilestones());
-        assertTrue(mappedMilestones.containsKey("Milestone1"));
-        assertTrue(mappedMilestones.containsKey("Milestone2"));
-
-        Map<String, AdHocFragment> mappedFragments = mapAdHocFragments(caseDef.getAdHocFragments());
-        assertTrue(mappedFragments.containsKey("Hello2"));
-        assertEquals("HumanTaskNode", mappedFragments.get("Hello2").getType());
-        assertTrue(mappedFragments.containsKey("Milestone1"));
-        assertEquals("MilestoneNode", mappedFragments.get("Milestone1").getType());
-        assertTrue(mappedFragments.containsKey("Milestone2"));
-        assertEquals("MilestoneNode", mappedFragments.get("Milestone2").getType());
-
-        assertNotNull(caseDef.getCaseRoles());
-        assertEquals(3, caseDef.getCaseRoles().size());
-
-        Map<String, CaseRole> mappedRoles = mapRoles(caseDef.getCaseRoles());
-        assertTrue(mappedRoles.containsKey("owner"));
-        assertTrue(mappedRoles.containsKey("contact"));
-        assertTrue(mappedRoles.containsKey("participant"));
-
-        assertEquals(1, mappedRoles.get("owner").getCardinality().intValue());
-        assertEquals(2, mappedRoles.get("contact").getCardinality().intValue());
-        assertEquals(-1, mappedRoles.get("participant").getCardinality().intValue());
-    }
-
 
     /*
      * Case instance queries
@@ -532,13 +182,19 @@ public class CaseRuntimeDataServiceImplTest extends AbstractCaseServicesBaseTest
     
     @Test
     public void testUserTasksInCase() {
+        // use user name who is part of the case roles assignment
+        // so (s)he will be authorized to access case instance
+        identityProvider.setName("john");
+        Map<String, OrganizationalEntity> roleAssignments = new HashMap<>();
+        roleAssignments.put("owner", new UserImpl("john"));
+        
         assertNotNull(deploymentService);        
         DeploymentUnit deploymentUnit = new KModuleDeploymentUnit(GROUP_ID, ARTIFACT_ID, VERSION);
         
         deploymentService.deploy(deploymentUnit);
         units.add(deploymentUnit);
         Map<String, Object> data = new HashMap<>();
-        CaseFileInstance caseFile = caseService.newCaseFileInstance(deploymentUnit.getIdentifier(), USER_TASK_CASE_P_ID, data);
+        CaseFileInstance caseFile = caseService.newCaseFileInstance(deploymentUnit.getIdentifier(), USER_TASK_CASE_P_ID, data, roleAssignments);
         String caseId2 = null;
         String caseId = caseService.startCase(deploymentUnit.getIdentifier(), USER_TASK_STAGE_CASE_P_ID, caseFile);
         assertNotNull(caseId);
@@ -597,13 +253,19 @@ public class CaseRuntimeDataServiceImplTest extends AbstractCaseServicesBaseTest
     
     @Test
     public void testUserTasksInCaseWithSubprocess() {
+        // use user name who is part of the case roles assignment
+        // so (s)he will be authorized to access case instance
+        identityProvider.setName("john");
+        Map<String, OrganizationalEntity> roleAssignments = new HashMap<>();
+        roleAssignments.put("owner", new UserImpl("john"));
+        
         assertNotNull(deploymentService);        
         DeploymentUnit deploymentUnit = new KModuleDeploymentUnit(GROUP_ID, ARTIFACT_ID, VERSION);
         
         deploymentService.deploy(deploymentUnit);
         units.add(deploymentUnit);
         Map<String, Object> data = new HashMap<>();
-        CaseFileInstance caseFile = caseService.newCaseFileInstance(deploymentUnit.getIdentifier(), USER_TASK_CASE_P_ID, data);
+        CaseFileInstance caseFile = caseService.newCaseFileInstance(deploymentUnit.getIdentifier(), USER_TASK_CASE_P_ID, data, roleAssignments);
         
         String caseId = caseService.startCase(deploymentUnit.getIdentifier(), USER_TASK_STAGE_CASE_P_ID, caseFile);
         assertNotNull(caseId);
@@ -652,13 +314,19 @@ public class CaseRuntimeDataServiceImplTest extends AbstractCaseServicesBaseTest
     
     @Test
     public void testUserTasksInCaseAdBusinessAdmin() {
+        // use user name who is part of the case roles assignment
+        // so (s)he will be authorized to access case instance
+        identityProvider.setName("john");
+        Map<String, OrganizationalEntity> roleAssignments = new HashMap<>();
+        roleAssignments.put("owner", new UserImpl("john"));
+        
         assertNotNull(deploymentService);        
         DeploymentUnit deploymentUnit = new KModuleDeploymentUnit(GROUP_ID, ARTIFACT_ID, VERSION);
         
         deploymentService.deploy(deploymentUnit);
         units.add(deploymentUnit);
         Map<String, Object> data = new HashMap<>();
-        CaseFileInstance caseFile = caseService.newCaseFileInstance(deploymentUnit.getIdentifier(), USER_TASK_CASE_P_ID, data);
+        CaseFileInstance caseFile = caseService.newCaseFileInstance(deploymentUnit.getIdentifier(), USER_TASK_CASE_P_ID, data, roleAssignments);
         String caseId2 = null;
         String caseId = caseService.startCase(deploymentUnit.getIdentifier(), USER_TASK_STAGE_CASE_P_ID, caseFile);
         assertNotNull(caseId);
@@ -717,13 +385,19 @@ public class CaseRuntimeDataServiceImplTest extends AbstractCaseServicesBaseTest
     
     @Test
     public void testUserTasksInCaseAdStakeholder() {
+     // use user name who is part of the case roles assignment
+        // so (s)he will be authorized to access case instance
+        identityProvider.setName("john");
+        Map<String, OrganizationalEntity> roleAssignments = new HashMap<>();
+        roleAssignments.put("owner", new UserImpl("john"));
+        
         assertNotNull(deploymentService);        
         DeploymentUnit deploymentUnit = new KModuleDeploymentUnit(GROUP_ID, ARTIFACT_ID, VERSION);
         
         deploymentService.deploy(deploymentUnit);
         units.add(deploymentUnit);
         Map<String, Object> data = new HashMap<>();
-        CaseFileInstance caseFile = caseService.newCaseFileInstance(deploymentUnit.getIdentifier(), USER_TASK_CASE_P_ID, data);
+        CaseFileInstance caseFile = caseService.newCaseFileInstance(deploymentUnit.getIdentifier(), USER_TASK_CASE_P_ID, data, roleAssignments);
         String caseId2 = null;
         String caseId = caseService.startCase(deploymentUnit.getIdentifier(), USER_TASK_STAGE_CASE_P_ID, caseFile);
         assertNotNull(caseId);
@@ -777,6 +451,262 @@ public class CaseRuntimeDataServiceImplTest extends AbstractCaseServicesBaseTest
             }
             if (caseId2 != null) {
                 caseService.cancelCase(caseId2);
+            }
+        }
+    }
+    
+    @Test
+    public void testGetProcessDefinitions() {
+        assertNotNull(deploymentService);        
+        DeploymentUnit deploymentUnit = new KModuleDeploymentUnit(GROUP_ID, ARTIFACT_ID, VERSION);
+
+        deploymentService.deploy(deploymentUnit);
+        units.add(deploymentUnit);
+        Collection<ProcessDefinition> processes = caseRuntimeDataService.getProcessDefinitions(new QueryContext());
+        assertNotNull(processes);
+        assertEquals(2, processes.size());
+
+        Map<String, ProcessDefinition> mappedProcesses = mapProcesses(processes);        
+        assertTrue(mappedProcesses.containsKey("UserTask"));
+        assertTrue(mappedProcesses.containsKey("DataVerification"));
+        
+        processes = caseRuntimeDataService.getProcessDefinitions("User", new QueryContext());
+        assertNotNull(processes);
+        assertEquals(1, processes.size());
+        
+        mappedProcesses = mapProcesses(processes);        
+        assertTrue(mappedProcesses.containsKey("UserTask"));
+        
+        processes = caseRuntimeDataService.getProcessDefinitionsByDeployment(deploymentUnit.getIdentifier(), new QueryContext());
+        assertNotNull(processes);
+        assertEquals(2, processes.size());
+
+        mappedProcesses = mapProcesses(processes);        
+        assertTrue(mappedProcesses.containsKey("UserTask"));
+        assertTrue(mappedProcesses.containsKey("DataVerification"));
+    }
+
+    @Test
+    public void testTransitionBetweenStagesInCase() {
+        // use user name who is part of the case roles assignment
+        // so (s)he will be authorized to access case instance
+        identityProvider.setName("john");
+        Map<String, OrganizationalEntity> roleAssignments = new HashMap<>();
+        roleAssignments.put("owner", new UserImpl("john"));
+        
+        assertNotNull(deploymentService);        
+        DeploymentUnit deploymentUnit = new KModuleDeploymentUnit(GROUP_ID, ARTIFACT_ID, VERSION);
+        
+        deploymentService.deploy(deploymentUnit);
+        units.add(deploymentUnit);
+        Map<String, Object> data = new HashMap<>();
+        CaseFileInstance caseFile = caseService.newCaseFileInstance(deploymentUnit.getIdentifier(), TWO_STAGES_CASE_P_ID, data, roleAssignments);
+        String caseId = caseService.startCase(deploymentUnit.getIdentifier(), TWO_STAGES_CASE_P_ID, caseFile);
+        assertNotNull(caseId);
+        try {
+            
+            Collection<CaseStageInstance> stage = caseRuntimeDataService.getCaseInstanceStages(caseId, true, new QueryContext(0, 1));
+            assertNotNull(stage);
+            assertEquals(1, stage.size());
+            assertEquals("Stage One", stage.iterator().next().getName());
+            assertEquals(StageStatus.Active, stage.iterator().next().getStatus());
+            
+            Collection<AdHocFragment> adhocTasks = caseRuntimeDataService.getAdHocFragmentsForCase(caseId);
+            assertNotNull(adhocTasks);
+            assertEquals(1, adhocTasks.size());
+            assertEquals("Task 1", adhocTasks.iterator().next().getName());
+            
+            Collection<NodeInstanceDesc> activeNodes = caseRuntimeDataService.getActiveNodesForCase(caseId, new QueryContext(0, 10));
+            assertNotNull(activeNodes);
+            assertEquals(1, activeNodes.size());
+            assertEquals("Stage One", activeNodes.iterator().next().getName());
+            
+            Collection<NodeInstanceDesc> completedNodes = caseRuntimeDataService.getCompletedNodesForCase(caseId, new QueryContext(0, 10));
+            assertNotNull(completedNodes);
+            assertEquals(0, completedNodes.size());
+            
+            caseService.addDataToCaseFile(caseId, "customData", "nextStagePlease");
+                        
+            stage = caseRuntimeDataService.getCaseInstanceStages(caseId, true, new QueryContext(0, 1));
+            assertNotNull(stage);
+            assertEquals(1, stage.size());
+            assertEquals("Stage Two", stage.iterator().next().getName());
+            assertEquals(StageStatus.Active, stage.iterator().next().getStatus());
+            
+            adhocTasks = caseRuntimeDataService.getAdHocFragmentsForCase(caseId);
+            assertNotNull(adhocTasks);
+            assertEquals(1, adhocTasks.size());
+            assertEquals("Task 2", adhocTasks.iterator().next().getName());
+            
+            activeNodes = caseRuntimeDataService.getActiveNodesForCase(caseId, new QueryContext(0, 10));
+            assertNotNull(activeNodes);
+            assertEquals(1, activeNodes.size());
+            assertEquals("Stage Two", activeNodes.iterator().next().getName());
+            
+            completedNodes = caseRuntimeDataService.getCompletedNodesForCase(caseId, new QueryContext(0, 10));
+            assertNotNull(completedNodes);
+            assertEquals(1, completedNodes.size());
+            assertEquals("Stage One", completedNodes.iterator().next().getName());
+            
+        } catch (Exception e) {
+            logger.error("Unexpected error {}", e.getMessage(), e);
+            fail("Unexpected exception " + e.getMessage());
+        } finally {
+            if (caseId != null) {
+                caseService.cancelCase(caseId);
+            }
+        }
+    }
+    
+    @Test
+    public void testAddSubprocessToEmptyCaseCheckCaseNodes() {
+        assertNotNull(deploymentService);        
+        DeploymentUnit deploymentUnit = new KModuleDeploymentUnit(GROUP_ID, ARTIFACT_ID, VERSION);
+        
+        deploymentService.deploy(deploymentUnit);
+        units.add(deploymentUnit);
+        Map<String, Object> data = new HashMap<>();
+        data.put("name", "my first case");
+        CaseFileInstance caseFile = caseService.newCaseFileInstance(deploymentUnit.getIdentifier(), EMPTY_CASE_P_ID, data);
+        
+        String caseId = caseService.startCase(deploymentUnit.getIdentifier(), EMPTY_CASE_P_ID, caseFile);
+        assertNotNull(caseId);
+        assertEquals(FIRST_CASE_ID, caseId);
+        try {
+            CaseInstance cInstance = caseService.getCaseInstance(caseId);
+            assertNotNull(cInstance);
+            assertEquals(FIRST_CASE_ID, cInstance.getCaseId());
+            assertEquals(deploymentUnit.getIdentifier(), cInstance.getDeploymentId());
+            
+            Collection<NodeInstanceDesc> activeNodes = caseRuntimeDataService.getActiveNodesForCase(caseId, new QueryContext(0, 10));
+            assertNotNull(activeNodes);
+            assertEquals(0, activeNodes.size());
+            
+            Collection<NodeInstanceDesc> completedNodes = caseRuntimeDataService.getCompletedNodesForCase(caseId, new QueryContext(0, 10));
+            assertNotNull(completedNodes);
+            assertEquals(0, completedNodes.size());
+            
+            Map<String, Object> parameters = new HashMap<>();            
+            caseService.addDynamicSubprocess(caseId, "UserTask", parameters);                        
+            
+            Collection<ProcessInstanceDesc> caseProcessInstances = caseRuntimeDataService.getProcessInstancesForCase(caseId, new QueryContext());
+            assertNotNull(caseProcessInstances);
+            assertEquals(2, caseProcessInstances.size());
+            
+            activeNodes = caseRuntimeDataService.getActiveNodesForCase(caseId, new QueryContext(0, 10));
+            assertNotNull(activeNodes);
+            assertEquals(2, activeNodes.size());
+            Map<String, NodeInstanceDesc> mappedNodes = mapNodeInstances(activeNodes);
+            assertEquals("HumanTaskNode", mappedNodes.get("Hello").getNodeType());
+            assertEquals("SubProcessNode", mappedNodes.get("[Dynamic] Sub Process").getNodeType());
+            
+            completedNodes = caseRuntimeDataService.getCompletedNodesForCase(caseId, new QueryContext(0, 10));
+            assertNotNull(completedNodes);
+            assertEquals(0, completedNodes.size());
+            
+            List<TaskSummary> tasks = caseRuntimeDataService.getCaseTasksAssignedAsPotentialOwner(caseId, "john", null, new QueryContext());
+            assertEquals(1, tasks.size());
+            
+            userTaskService.completeAutoProgress(tasks.get(0).getId(), "john", null);
+            
+            activeNodes = caseRuntimeDataService.getActiveNodesForCase(caseId, new QueryContext(0, 10));
+            assertNotNull(activeNodes);
+            assertEquals(0, activeNodes.size());
+            
+            completedNodes = caseRuntimeDataService.getCompletedNodesForCase(caseId, new QueryContext(0, 10));
+            assertNotNull(completedNodes);
+            assertEquals(2, completedNodes.size());
+            assertEquals("HumanTaskNode", mappedNodes.get("Hello").getNodeType());
+            assertEquals("SubProcessNode", mappedNodes.get("[Dynamic] Sub Process").getNodeType());
+            
+        } catch (Exception e) {
+            logger.error("Unexpected error {}", e.getMessage(), e);
+            fail("Unexpected exception " + e.getMessage());
+        } finally {
+            if (caseId != null) {
+                caseService.cancelCase(caseId);
+            }
+        }
+    }
+    
+    @Test
+    public void testTransitionBetweenStagesWithConditionsInCase() {
+        // use user name who is part of the case roles assignment
+        // so (s)he will be authorized to access case instance
+        identityProvider.setName("john");
+        Map<String, OrganizationalEntity> roleAssignments = new HashMap<>();
+        roleAssignments.put("owner", new UserImpl("john"));
+        
+        assertNotNull(deploymentService);        
+        DeploymentUnit deploymentUnit = new KModuleDeploymentUnit(GROUP_ID, ARTIFACT_ID, VERSION);
+        
+        deploymentService.deploy(deploymentUnit);
+        units.add(deploymentUnit);
+        Map<String, Object> data = new HashMap<>();
+        data.put("customData", "none");
+        CaseFileInstance caseFile = caseService.newCaseFileInstance(deploymentUnit.getIdentifier(), TWO_STAGES_CONDITIONS_CASE_P_ID, data, roleAssignments);
+        String caseId = caseService.startCase(deploymentUnit.getIdentifier(), TWO_STAGES_CONDITIONS_CASE_P_ID, caseFile);
+        assertNotNull(caseId);
+        try {
+            
+            Collection<CaseStageInstance> stage = caseRuntimeDataService.getCaseInstanceStages(caseId, true, new QueryContext(0, 1));
+            assertNotNull(stage);
+            assertEquals(1, stage.size());
+            assertEquals("Stage One", stage.iterator().next().getName());
+            assertEquals(StageStatus.Active, stage.iterator().next().getStatus());
+            
+            Collection<AdHocFragment> adhocTasks = caseRuntimeDataService.getAdHocFragmentsForCase(caseId);
+            assertNotNull(adhocTasks);
+            assertEquals(1, adhocTasks.size());
+            assertEquals("Task 1", adhocTasks.iterator().next().getName());
+            
+            caseService.triggerAdHocFragment(caseId, "Task 1", null);
+            
+            List<TaskSummary> tasks = runtimeDataService.getTasksAssignedAsPotentialOwner("john", new QueryFilter());
+            assertNotNull(tasks);
+            assertEquals(1, tasks.size());            
+            assertTask(tasks.get(0), "john", "Task 1", Status.Reserved);
+            
+            Map<String, Object> params = new HashMap<>();
+            params.put("myData", "nextStage");
+            userTaskService.completeAutoProgress(tasks.get(0).getId(), "john", params);
+            
+            stage = caseRuntimeDataService.getCaseInstanceStages(caseId, true, new QueryContext(0, 1));
+            assertNotNull(stage);
+            assertEquals(1, stage.size());
+            assertEquals("Stage Two", stage.iterator().next().getName());
+            assertEquals(StageStatus.Active, stage.iterator().next().getStatus());
+            
+            adhocTasks = caseRuntimeDataService.getAdHocFragmentsForCase(caseId);
+            assertNotNull(adhocTasks);
+            assertEquals(1, adhocTasks.size());
+            assertEquals("Task 2", adhocTasks.iterator().next().getName());
+            
+            caseService.triggerAdHocFragment(caseId, "Task 2", null);
+            
+            tasks = runtimeDataService.getTasksAssignedAsPotentialOwner("john", new QueryFilter());
+            assertNotNull(tasks);
+            assertEquals(1, tasks.size());            
+            assertTask(tasks.get(0), "john", "Task 2", Status.Reserved);
+            
+            params = new HashMap<>();
+            params.put("myData", "none");
+            userTaskService.completeAutoProgress(tasks.get(0).getId(), "john", params);
+            
+            try {
+                caseService.getCaseInstance(caseId);
+                fail("Case should already be finished");
+            } catch (CaseNotFoundException e) {
+                // expected
+                caseId = null;
+            }
+            
+        } catch (Exception e) {
+            logger.error("Unexpected error {}", e.getMessage(), e);
+            fail("Unexpected exception " + e.getMessage());
+        } finally {
+            if (caseId != null) {
+                caseService.cancelCase(caseId);
             }
         }
     }

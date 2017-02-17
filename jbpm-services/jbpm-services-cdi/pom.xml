@@ -58,11 +58,20 @@
       <artifactId>jbpm-kie-services</artifactId>
     </dependency>
 
-
     <dependency>
       <groupId>javax.enterprise</groupId>
       <artifactId>cdi-api</artifactId>
       <scope>provided</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>javax.el</groupId>
+          <artifactId>javax.el-api</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>javax.interceptor</groupId>
+          <artifactId>javax.interceptor-api</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     
     <dependency>
@@ -104,7 +113,6 @@
       <artifactId>dashbuilder-dataset-api</artifactId>
     </dependency>
 
-    
     <!-- test -->
     <dependency>
       <groupId>org.jboss.weld</groupId>
@@ -175,7 +183,7 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
-  
+
   <build>
     <plugins>  
       <plugin>

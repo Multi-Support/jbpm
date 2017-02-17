@@ -54,6 +54,7 @@
         log.processType = 2
         and log.externalId =:deploymentId
         and log.status in (:statuses)
+        and log.processInstanceId in (select r.processInstanceId from CaseRoleAssignmentLog r where r.entityId in (:entities))
       ORDER BY
         log.correlationKey, log.start
     </query>
@@ -82,6 +83,7 @@
         log.processType = 2
         and log.processId =:definitionId
         and log.status in (:statuses)
+        and log.processInstanceId in (select r.processInstanceId from CaseRoleAssignmentLog r where r.entityId in (:entities))
       ORDER BY
         log.correlationKey, log.start
     </query>
@@ -116,6 +118,111 @@
     <!-- hint name="org.hibernate.timeout" value="200"/ -->
   </named-query>
 
+  <named-query name="getCaseInstancesByRole">
+
+    <query>
+      select
+      new org.jbpm.casemgmt.impl.model.instance.CaseInstanceImpl(
+        log.correlationKey, <!-- case id -->
+        log.processInstanceDescription, <!-- case description -->            
+        log.processId, <!--case definition  -->
+        log.status, <!-- case status -->
+        log.externalId, <!-- deployment id -->      
+        log.identity, <!-- case owner -->
+        log.start, <!-- case start date  -->
+        log.end, <!-- case end date  -->
+        log.processInstanceId, <!-- case top level process instance id -->
+        log.outcome    
+      )
+      from
+        ProcessInstanceLog log        
+      where         
+        log.processType = 2
+        and log.status in (:statuses)
+        and log.processInstanceId in (select r.processInstanceId from CaseRoleAssignmentLog r where r.roleName =:roleName and r.entityId in (:entities))
+      ORDER BY
+        log.correlationKey, log.start
+    </query>
+    <!-- hint name="org.hibernate.timeout" value="200"/ -->
+  </named-query>
+  
+  <named-query name="getCaseInstancesAnyRole">
+
+    <query>
+      select
+      new org.jbpm.casemgmt.impl.model.instance.CaseInstanceImpl(
+        log.correlationKey, <!-- case id -->
+        log.processInstanceDescription, <!-- case description -->            
+        log.processId, <!--case definition  -->
+        log.status, <!-- case status -->
+        log.externalId, <!-- deployment id -->      
+        log.identity, <!-- case owner -->
+        log.start, <!-- case start date  -->
+        log.end, <!-- case end date  -->
+        log.processInstanceId, <!-- case top level process instance id -->
+        log.outcome    
+      )
+      from
+        ProcessInstanceLog log        
+      where         
+        log.processType = 2
+        and log.status in (:statuses)
+        and log.processInstanceId in (select r.processInstanceId from CaseRoleAssignmentLog r where r.entityId in (:entities))
+      ORDER BY
+        log.correlationKey, log.start
+    </query>
+    <!-- hint name="org.hibernate.timeout" value="200"/ -->
+  </named-query>  
+  
+    
+  <named-query name="getCaseInstanceById">
+    <query>
+     select
+      new org.jbpm.casemgmt.impl.model.instance.CaseInstanceImpl(
+        log.correlationKey, <!-- case id -->
+        log.processInstanceDescription, <!-- case description -->            
+        log.processId, <!--case definition  -->
+        log.status, <!-- case status -->
+        log.externalId, <!-- deployment id -->      
+        log.identity, <!-- case owner -->
+        log.start, <!-- case start date  -->
+        log.end, <!-- case end date  -->
+        log.processInstanceId, <!-- case top level process instance id -->
+        log.outcome    
+      )
+      from
+        ProcessInstanceLog log
+      where
+        log.correlationKey =:correlationKey
+        and log.status = 1
+    </query>
+    <!-- hint name="org.hibernate.timeout" value="200"/ -->
+  </named-query>
+  
+  <named-query name="getAuthorizationToCaseInstance">
+    <query>
+     select
+        r.entityId
+      from
+        CaseRoleAssignmentLog r
+      where
+        r.caseId =:caseId
+    </query>
+    <!-- hint name="org.hibernate.timeout" value="200"/ -->
+  </named-query>
+  
+  <named-query name="getAuthorizationToCaseInstanceByRole">
+    <query>
+     select
+        r.entityId
+      from
+        CaseRoleAssignmentLog r
+      where
+        r.caseId =:caseId and r.roleName in (:roles)
+    </query>
+    <!-- hint name="org.hibernate.timeout" value="200"/ -->
+  </named-query>  
+
   <named-query name="getActiveNodesForCase">
 
     <query>
@@ -136,10 +243,10 @@
         ProcessInstanceLog plog,
         NodeInstanceLog log        
       where 
-        plog.correlationKey =:caseId
-        and plog.processType = 2
+        plog.correlationKey like :caseId
         and plog.status = 1
         and plog.processInstanceId = log.processInstanceId
+        and log.nodeType not in ('StartNode', 'EndNode', 'Split', 'Join')
         and log.nodeInstanceId in ( select nil.nodeInstanceId from NodeInstanceLog nil where nil.processInstanceId=plog.processInstanceId  
                     GROUP BY nil.nodeInstanceId
                     HAVING sum(nil.type) = 0)
@@ -149,6 +256,38 @@
     </query>
     <!-- hint name="org.hibernate.timeout" value="200"/ -->
   </named-query>
+  
+  <named-query name="getCompletedNodesForCase">
+    <query>
+      select
+      new org.jbpm.kie.services.impl.model.NodeInstanceDesc(
+      log.nodeInstanceId,
+      log.nodeId,
+      log.nodeName,
+      log.nodeType,
+      log.externalId,
+      log.processInstanceId,
+      log.date,
+      log.connection,
+      log.type,
+      log.workItemId
+      )
+      from
+        ProcessInstanceLog plog,
+        NodeInstanceLog log        
+      where 
+        plog.correlationKey like :caseId
+        and plog.processInstanceId = log.processInstanceId
+        and log.nodeType not in ('StartNode', 'EndNode', 'Split', 'Join')
+        and log.nodeInstanceId in (select nodeInstanceId from NodeInstanceLog nid where nid.processInstanceId=plog.processInstanceId AND nid.type = 1 
+                                GROUP BY nid.nodeInstanceId
+                    HAVING sum(nid.type) &gt;= 1)
+        and log.type = 1 
+      ORDER BY 
+        log.processInstanceId, log.nodeInstanceId
+    </query>
+    <!-- hint name="org.hibernate.timeout" value="200"/ -->
+  </named-query>  
   
   <!-- case id info queries -->
   <named-query name="findCaseIdInfoByPrefix">

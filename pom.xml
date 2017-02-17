@@ -20,6 +20,7 @@
   <url>http://www.jboss.org/jbpm/</url>
 
   <properties>
+    <enforcer.failOnDuplicatedClasses>true</enforcer.failOnDuplicatedClasses>
     <!--
      These properties are used in the database profiles. Some of them must be initialized as empty strings
      so that Maven applies them via filtering.
@@ -30,12 +31,14 @@
     <maven.jdbc.driver.class>org.h2.Driver</maven.jdbc.driver.class>
     <maven.jdbc.db.name/>
     <maven.jdbc.db.port/>
-    <maven.jdbc.db.server/>     
+    <maven.jdbc.db.server/>
     <maven.jdbc.driver.jar/>
     <maven.jdbc.username>sa</maven.jdbc.username>
     <maven.jdbc.password>sasa</maven.jdbc.password>
     <maven.jdbc.url>jdbc:h2:tcp://localhost/${project.basedir}/target/jbpm-test;MVCC=TRUE</maven.jdbc.url>
     <maven.jdbc.schema>public</maven.jdbc.schema>
+
+    <findbugs.failOnViolation>true</findbugs.failOnViolation>
   </properties>
 
   <repositories>
@@ -88,7 +91,7 @@
   </modules>
 
   <build>
-     <pluginManagement>
+    <pluginManagement>
       <plugins>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -98,7 +101,7 @@
               <additionalClasspathElement>${maven.jdbc.driver.jar}</additionalClasspathElement>
             </additionalClasspathElements>
           </configuration>
-        </plugin> 
+        </plugin>
       </plugins>
     </pluginManagement>
   </build>
@@ -123,6 +126,13 @@
         <groupId>org.dashbuilder</groupId>
         <artifactId>dashbuilder-bom</artifactId>
         <version>${version.org.dashbuilder}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.kie</groupId>
+        <artifactId>kie-dmn-bom</artifactId>
+        <version>${version.org.kie}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -165,5 +175,5 @@
     </profile>
 
   </profiles>
-    
+
 </project>

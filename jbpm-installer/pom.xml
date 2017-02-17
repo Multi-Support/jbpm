@@ -34,9 +34,15 @@
       <scope>test</scope>
     </dependency>
 
+
     <dependency>
-      <groupId>org.codehaus.btm</groupId>
-      <artifactId>btm</artifactId>
+      <groupId>org.hibernate.javax.persistence</groupId>
+      <artifactId>hibernate-jpa-2.1-api</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.hibernate</groupId>
+      <artifactId>hibernate-core</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -49,15 +55,9 @@
       <artifactId>h2</artifactId>
       <scope>test</scope>
     </dependency>
-
     <dependency>
-      <groupId>org.hibernate.javax.persistence</groupId>
-      <artifactId>hibernate-jpa-2.1-api</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.hibernate</groupId>
-      <artifactId>hibernate-core</artifactId>
+      <groupId>org.codehaus.btm</groupId>
+      <artifactId>btm</artifactId>
       <scope>test</scope>
     </dependency>
 
@@ -116,6 +116,11 @@
       <groupId>org.jbpm</groupId>
       <artifactId>jbpm-persistence-jpa</artifactId>
       <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jbpm</groupId>
+      <artifactId>jbpm-case-mgmt-impl</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>

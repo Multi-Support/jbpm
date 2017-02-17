@@ -55,19 +55,16 @@
         <groupId>org.jbpm</groupId>
         <artifactId>test-kjar-integration</artifactId>
         <version>${project.version}</version>
-        <scope>runtime</scope>
       </dependency>
       <dependency>
         <groupId>org.jbpm</groupId>
         <artifactId>test-kjar-evaluation</artifactId>
         <version>${project.version}</version>
-        <scope>runtime</scope>
       </dependency>
       <dependency>
         <groupId>org.jbpm</groupId>
         <artifactId>test-kjar-bpmn-build</artifactId>
         <version>${project.version}</version>
-        <scope>runtime</scope>
       </dependency>
 
       <!-- test domain classes -->
@@ -98,17 +95,14 @@
     <dependency>
       <groupId>org.jbpm</groupId>
       <artifactId>test-kjar-integration</artifactId>
-      <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>org.jbpm</groupId>
       <artifactId>test-kjar-evaluation</artifactId>
-      <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>org.jbpm</groupId>
       <artifactId>test-kjar-bpmn-build</artifactId>
-      <scope>runtime</scope>
     </dependency>
 
     <!-- test domain classes -->
@@ -168,6 +162,13 @@
       <groupId>org.drools</groupId>
       <artifactId>drools-decisiontables</artifactId>
       <scope>provided</scope>
+      <exclusions>
+        <exclusion>
+          <!-- Classes from stax-api are already present in 'xml-apis:xml-apis' dependency -->
+          <groupId>javax.xml.stream</groupId>
+          <artifactId>stax-api</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.drools</groupId>
@@ -201,10 +202,6 @@
     <dependency>
       <groupId>org.jboss.marshalling</groupId>
       <artifactId>jboss-marshalling-river</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.sonatype.sisu</groupId>
-      <artifactId>sisu-guice</artifactId>
     </dependency>
 
     <dependency>
@@ -250,10 +247,26 @@
     <dependency>
       <groupId>org.jboss.resteasy</groupId>
       <artifactId>tjws</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>javax.servlet</groupId>
+          <artifactId>servlet-api</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.jboss.resteasy</groupId>
       <artifactId>resteasy-jaxrs</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>commons-logging</groupId>
+          <artifactId>commons-logging</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>net.jcip</groupId>
+          <artifactId>jcip-annotations</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
   </dependencies>
 
