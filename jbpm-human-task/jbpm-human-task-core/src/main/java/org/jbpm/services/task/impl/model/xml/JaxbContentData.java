@@ -26,6 +26,8 @@ public class JaxbContentData extends AbstractJaxbTaskObject<ContentData> impleme
     @XmlSchemaType(name="base64Binary")
     private byte[] content = null;
     
+    private Object contentObject;
+    
     public JaxbContentData() {
         super(ContentData.class);
     }
@@ -64,4 +66,14 @@ public class JaxbContentData extends AbstractJaxbTaskObject<ContentData> impleme
         this.content = content;
     }
 
+    @Override
+    public Object getContentObject() {
+    	return contentObject;
+    }
+    
+    @Override
+    public void setContentObject(Object object) {
+    	this.contentObject = object;
+    	
+    }
 }
