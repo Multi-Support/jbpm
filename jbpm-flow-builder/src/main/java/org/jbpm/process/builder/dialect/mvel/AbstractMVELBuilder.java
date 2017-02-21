@@ -96,8 +96,7 @@ public class AbstractMVELBuilder {
         
         MVELAnalysisResult analysis = null;
         try { 
-            BoundIdentifiers boundIdentifiers 
-                = new BoundIdentifiers(variables, context.getKnowledgeBuilder().getGlobals());
+            BoundIdentifiers boundIdentifiers = new BoundIdentifiers(variables, context);
             analysis = ( MVELAnalysisResult ) dialect.analyzeBlock( context,
                                                                     text,
                                                                     boundIdentifiers,

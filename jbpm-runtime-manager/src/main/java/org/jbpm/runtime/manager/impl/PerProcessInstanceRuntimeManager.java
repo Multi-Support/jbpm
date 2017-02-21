@@ -21,9 +21,9 @@ import org.drools.core.command.impl.CommandBasedStatefulKnowledgeSession;
 import org.drools.core.command.impl.ExecutableCommand;
 import org.drools.core.command.impl.RegistryContext;
 import org.drools.core.common.InternalKnowledgeRuntime;
-import org.drools.persistence.OrderedTransactionSynchronization;
-import org.drools.persistence.TransactionManager;
-import org.drools.persistence.TransactionManagerHelper;
+import org.drools.persistence.api.OrderedTransactionSynchronization;
+import org.drools.persistence.api.TransactionManager;
+import org.drools.persistence.api.TransactionManagerHelper;
 import org.jbpm.runtime.manager.impl.factory.LocalTaskServiceFactory;
 import org.jbpm.runtime.manager.impl.mapper.EnvironmentAwareProcessInstanceContext;
 import org.jbpm.runtime.manager.impl.mapper.InMemoryMapper;
@@ -217,18 +217,22 @@ public class PerProcessInstanceRuntimeManager extends AbstractRuntimeManager {
     	if (isClosed()) {
     		throw new IllegalStateException("Runtime manager " + identifier + " is already closed");
     	}
-    	
-    	if (canDispose(runtime)) {
-        	removeLocalRuntime(runtime);
-        	if (runtime instanceof Disposable) {
-            	// special handling for in memory to not allow to dispose if there is any context in the mapper
-            	if (mapper instanceof InMemoryMapper && ((InMemoryMapper)mapper).hasContext(runtime.getKieSession().getIdentifier())){
-            		return;
-            	}
-                ((Disposable) runtime).dispose();
-            }
-            
-        	releaseAndCleanLock(runtime);
+    	try {
+        	if (canDispose(runtime)) {
+            	removeLocalRuntime(runtime);
+            	if (runtime instanceof Disposable) {
+                	// special handling for in memory to not allow to dispose if there is any context in the mapper
+                	if (mapper instanceof InMemoryMapper && ((InMemoryMapper)mapper).hasContext(runtime.getKieSession().getIdentifier())){
+                		return;
+                	}
+                    ((Disposable) runtime).dispose();
+                }
+                
+            	releaseAndCleanLock(runtime);
+        	}
+    	} catch (Exception e) {
+    	    releaseAndCleanLock(runtime);
+    	    throw new RuntimeException(e);
     	}
     }
 

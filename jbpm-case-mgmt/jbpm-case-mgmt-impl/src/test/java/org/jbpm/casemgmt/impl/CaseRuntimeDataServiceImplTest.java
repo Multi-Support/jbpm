@@ -211,6 +211,7 @@ public class CaseRuntimeDataServiceImplTest extends AbstractCaseServicesBaseTest
             
             Map<String, Object> taskInput = new HashMap<>();
             taskInput.put("ActorId", "john");
+            taskInput.put("Comment", "Need to provide data");
             caseService.triggerAdHocFragment(caseId, "Missing data", taskInput);
             
             tasks = caseRuntimeDataService.getCaseTasksAssignedAsPotentialOwner(caseId, "john", null, new QueryContext());
@@ -218,6 +219,7 @@ public class CaseRuntimeDataServiceImplTest extends AbstractCaseServicesBaseTest
             assertEquals(1, tasks.size());
             TaskSummary task = tasks.get(0);
             assertEquals("Missing data", task.getName());
+            assertEquals("Need to provide data", task.getSubject());
             
             
             caseId2 = caseService.startCase(deploymentUnit.getIdentifier(), USER_TASK_STAGE_CASE_P_ID, caseFile);
@@ -700,6 +702,95 @@ public class CaseRuntimeDataServiceImplTest extends AbstractCaseServicesBaseTest
                 // expected
                 caseId = null;
             }
+            
+        } catch (Exception e) {
+            logger.error("Unexpected error {}", e.getMessage(), e);
+            fail("Unexpected exception " + e.getMessage());
+        } finally {
+            if (caseId != null) {
+                caseService.cancelCase(caseId);
+            }
+        }
+    }
+    
+    @Test
+    public void testTransitionBetweenStagesInCaseWithActiveElements() {
+        // use user name who is part of the case roles assignment
+        // so (s)he will be authorized to access case instance
+        identityProvider.setName("john");
+        Map<String, OrganizationalEntity> roleAssignments = new HashMap<>();
+        roleAssignments.put("owner", new UserImpl("john"));
+        
+        assertNotNull(deploymentService);        
+        DeploymentUnit deploymentUnit = new KModuleDeploymentUnit(GROUP_ID, ARTIFACT_ID, VERSION);
+        
+        deploymentService.deploy(deploymentUnit);
+        units.add(deploymentUnit);
+        Map<String, Object> data = new HashMap<>();
+        CaseFileInstance caseFile = caseService.newCaseFileInstance(deploymentUnit.getIdentifier(), TWO_STAGES_CASE_P_ID, data, roleAssignments);
+        String caseId = caseService.startCase(deploymentUnit.getIdentifier(), TWO_STAGES_CASE_P_ID, caseFile);
+        assertNotNull(caseId);
+        try {
+            
+            Collection<CaseStageInstance> stage = caseRuntimeDataService.getCaseInstanceStages(caseId, true, new QueryContext(0, 1));
+            assertNotNull(stage);
+            assertEquals(1, stage.size());
+            
+            CaseStageInstance stageInstance = stage.iterator().next();
+            assertEquals("Stage One", stageInstance.getName());
+            assertEquals(StageStatus.Active, stageInstance.getStatus());  
+            
+            Collection<NodeInstanceDesc> activeNodes = stageInstance.getActiveNodes();
+            assertNotNull(activeNodes);
+            assertEquals(0, activeNodes.size());            
+            
+            caseService.triggerAdHocFragment(caseId, "Task 1", data);
+            stage = caseRuntimeDataService.getCaseInstanceStages(caseId, true, new QueryContext(0, 1));
+            assertNotNull(stage);
+            assertEquals(1, stage.size());
+            
+            stageInstance = stage.iterator().next();
+            assertEquals("Stage One", stageInstance.getName());
+            assertEquals(StageStatus.Active, stageInstance.getStatus());  
+            
+            activeNodes = stageInstance.getActiveNodes();
+            assertNotNull(activeNodes);
+            assertEquals(1, activeNodes.size());
+            assertEquals("Task 1", activeNodes.iterator().next().getName());
+            
+            caseService.addDataToCaseFile(caseId, "customData", "nextStagePlease");
+                        
+            stage = caseRuntimeDataService.getCaseInstanceStages(caseId, true, new QueryContext(0, 1));
+            assertNotNull(stage);
+            assertEquals(1, stage.size());
+            assertEquals("Stage Two", stage.iterator().next().getName());
+            assertEquals(StageStatus.Active, stage.iterator().next().getStatus());
+                    
+            stage = caseRuntimeDataService.getCaseInstanceStages(caseId, true, new QueryContext(0, 1));
+            assertNotNull(stage);
+            assertEquals(1, stage.size());
+            
+            stageInstance = stage.iterator().next();
+            assertEquals("Stage Two", stageInstance.getName());
+            assertEquals(StageStatus.Active, stageInstance.getStatus()); 
+            
+            activeNodes = stageInstance.getActiveNodes();
+            assertNotNull(activeNodes);
+            assertEquals(0, activeNodes.size());
+            
+            caseService.triggerAdHocFragment(caseId, "Task 2", data);
+            stage = caseRuntimeDataService.getCaseInstanceStages(caseId, true, new QueryContext(0, 1));
+            assertNotNull(stage);
+            assertEquals(1, stage.size());
+            
+            stageInstance = stage.iterator().next();
+            assertEquals("Stage Two", stageInstance.getName());
+            assertEquals(StageStatus.Active, stageInstance.getStatus());  
+            
+            activeNodes = stageInstance.getActiveNodes();
+            assertNotNull(activeNodes);
+            assertEquals(1, activeNodes.size());
+            assertEquals("Task 2", activeNodes.iterator().next().getName());
             
         } catch (Exception e) {
             logger.error("Unexpected error {}", e.getMessage(), e);

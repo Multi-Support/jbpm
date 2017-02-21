@@ -15,6 +15,9 @@
 
 package org.jbpm.executor.test;
 
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.jbpm.executor.BasicExecutorBaseTest;
 import org.kie.api.executor.CommandCallback;
 import org.kie.api.executor.CommandContext;
 import org.kie.api.executor.ExecutionResults;
@@ -23,7 +26,9 @@ public class CustomCallback implements CommandCallback {
     
 	@Override
 	public void onCommandDone(CommandContext ctx, ExecutionResults results) {
-		results.setData("custom", "custom callback invoked");
+	    String businessKey = (String) ctx.getData("businessKey");
+        ((AtomicLong) BasicExecutorBaseTest.cachedEntities.get(businessKey)).incrementAndGet();
+        
 	}
 
 	@Override
