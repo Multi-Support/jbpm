@@ -49,7 +49,6 @@ public class ProcessTestRunnable implements Runnable {
 		ProcessInstance processInstance = runtime.getKieSession().startProcess(processId);
 		Assert.assertNotNull(processInstance);
 		this.processInstanceId = processInstance.getId();
-		System.out.println("Started process " + processInstanceId);
 		List<Status> status = Arrays.asList(Status.Ready, Status.Reserved);
 		for (int index = 0; index < amountOfTasks; index++) {
 			System.out.println("Reading task " + index + " for process " + processInstanceId);
@@ -62,20 +61,15 @@ public class ProcessTestRunnable implements Runnable {
 			Long taskId = task.getId();
 			Assert.assertNotNull(taskId);
 			if (task.getStatus() == Status.Ready) {
-				System.out.println("Claiming task " + index + " for process " + processInstanceId);
 				runtime.getTaskService().claim(taskId, userId);
 			}
-			System.out.println("Starting task " + index + " for process " + processInstanceId);
 			runtime.getTaskService().start(taskId, userId);
-			System.out.println("Completing task " + index + " for process " + processInstanceId);
 			runtime.getTaskService().complete(taskId, userId, new HashMap<>());
-			System.out.println("Completed task " + taskId + " of process " + processInstanceId);
 		}
 		ProcessInstanceLog log = runtime.getAuditService().findProcessInstance(processInstance.getId());
 		Assert.assertNotNull(log);
 		Assert.assertEquals(ProcessInstance.STATE_COMPLETED, log.getStatus().intValue());
 		manager.disposeRuntimeEngine(runtime);
-		System.out.println("Process " + processInstanceId + " completed");
 	}
 
 	private void setChainedProperties(RuntimeEngine runtime) {

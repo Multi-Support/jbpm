@@ -91,36 +91,30 @@ public class ChainedPropertiesAndRuntimeTest {
 		taskService.addGroup(TaskModelProvider.getFactory().newGroup("Administrators"));
 		taskService.addGroup(TaskModelProvider.getFactory().newGroup("Knights Templer"));
 		taskService.addGroup(TaskModelProvider.getFactory().newGroup("Crusaders"));
-		for (int count = 60; count > 0; count-=10) {
-			System.out.println("Sleeping for another " + count + " seconds...");
-			Thread.sleep(10000);
+		List<ProcessTestRunnable> runs = new ArrayList<>(SIZE);
+		Thread.sleep(10000);
+		System.out.println("running one more cycle...");
+		List<Thread> threads = new ArrayList<>(SIZE);
+		for (int index = 0; index < SIZE; index++) {
+			ProcessTestRunnable r = new ProcessTestRunnable(
+					DEPLOYMENT_ID, PROCESS_ID, "john", 3);
+			runs.add(r);
 		}
-		while (true) {
-			List<ProcessTestRunnable> runs = new ArrayList<>(SIZE);
-			Thread.sleep(10000);
-			System.out.println("running one more cycle...");
-			List<Thread> threads = new ArrayList<>(SIZE);
-			for (int index = 0; index < SIZE; index++) {
-				ProcessTestRunnable r = new ProcessTestRunnable(
-						DEPLOYMENT_ID, PROCESS_ID, "john", 3);
-				runs.add(r);
-			}
-			for (Runnable r : runs) {
-				Thread t = createThreadOrWait(r);
-				threads.add(t);
-				t.start();
-			}
-			for (Thread t : threads) {
-				t.join();
-			}
-			Set<Integer> chainedPropertiesSet = new HashSet<>();
-			for (ProcessTestRunnable r : runs) {
-				chainedPropertiesSet.add(r.getChainedPropertiesHashCodeValue());
-			}
-			//since we are only using one classloader, all ChainedProperties should be equal
-			//Assert.assertEquals(1, chainedPropertiesSet.size());
-			//Assert.assertEquals(2, cl.getResourceCallCount());
+		for (Runnable r : runs) {
+			Thread t = createThreadOrWait(r);
+			threads.add(t);
+			t.start();
 		}
+		for (Thread t : threads) {
+			t.join();
+		}
+		Set<Integer> chainedPropertiesSet = new HashSet<>();
+		for (ProcessTestRunnable r : runs) {
+			chainedPropertiesSet.add(r.getChainedPropertiesHashCodeValue());
+		}
+		//since we are only using one classloader, all ChainedProperties should be equal
+		Assert.assertEquals(1, chainedPropertiesSet.size());
+		Assert.assertEquals(2, cl.getResourceCallCount());
 	}
 
 	private Thread createThreadOrWait(Runnable r) throws InterruptedException {
